@@ -37,11 +37,15 @@ function resetLevel(level = 1) {
       maxHealth: PLAYER_MAX_HEALTH,
       invulnerableUntil: 0,
       lastLaserFire: 0,
+      vx: 0,
+      vy: 0
     };
     playerGold = 0;
   } else {
     player.x = WIDTH / 2 - PLAYER_SIZE / 2;
     player.y = HEIGHT / 2 - PLAYER_SIZE / 2;
+    player.vx = 0;
+    player.vy = 0;
   }
 
   enemies = []; enemyProjectiles = []; lasers = []; hazards = []; 
@@ -121,9 +125,23 @@ function draw(timestamp) {
     
     if (gameState !== "dead") {
       elapsed += delta;
+
+      const prevX = player.x;
+      const prevY = player.y;
+      
       updatePlayer();
+
+      if (delta > 0) {
+        player.vx = (player.x - prevX) / delta;
+        player.vy = (player.y - prevY) / delta;
+      } else {
+        player.vx = 0;
+        player.vy = 0;
+      }
+
       moveProjectiles(lasers, delta);
       moveProjectiles(enemyProjectiles, delta);
+      moveHazards(hazards, timestamp);
       lasers = lasers.filter(isOnScreen);
       
       enemyProjectiles = enemyProjectiles.filter(p => {
@@ -138,7 +156,7 @@ function draw(timestamp) {
       });
 
       updateHazards(timestamp);
-      checkPlayerHits();
+      checkPlayerHits(timestamp);
       checkGoldPickups(delta);
       updateDOMHud(); // Trigger the CSS bar and gold to update
 
@@ -154,7 +172,7 @@ function draw(timestamp) {
     }
 
     // Draw everything
-    drawHazards(); 
+    drawHazards(timestamp); 
     drawPortal();
     drawGold();
     drawEnemies();
