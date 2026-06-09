@@ -3,15 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dodge Game</title>
+  <title>Roguelike Dodge</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Dodge Game</h1>
-    <p class="instructions">Use <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to move. Click to fire lasers. Defeat all enemies to clear the level!</p>
-    <canvas id="game" width="800" height="600"></canvas>
-    <p id="status" class="status">Survive as long as you can.</p>
+  <canvas id="game"></canvas>
+
+  <div id="ui-layer">
+    
+    <div id="menu-main" class="screen active">
+      <h1 class="game-title">ROGUE DODGE</h1>
+      <button id="btn-play" class="btn">Play</button>
+      <button id="btn-settings" class="btn secondary">Settings</button>
+    </div>
+
+    <div id="menu-char-select" class="screen">
+      <h2 class="menu-title">Select Class</h2>
+      <div class="char-grid">
+        <div class="char-card active-char">
+          <div class="char-icon" style="background: #38bdf8;"></div>
+          <h3>The Survivor</h3>
+          <p>Balanced speed and health.</p>
+        </div>
+        <div class="char-card locked">
+          <div class="char-icon" style="background: #334155;"></div>
+          <h3>???</h3>
+          <p>Unlock later.</p>
+        </div>
+      </div>
+      <div class="menu-actions">
+        <button id="btn-back-char" class="btn secondary">Back</button>
+        <button id="btn-start" class="btn">Enter Dungeon</button>
+      </div>
+    </div>
+
+    <div id="menu-settings" class="screen">
+      <h2 class="menu-title">Settings</h2>
+      <div class="settings-box">
+        <p><strong>Move:</strong> W, A, S, D</p>
+        <p><strong>Shoot:</strong> Mouse Click</p>
+        <p><strong>Restart:</strong> R (when dead)</p>
+      </div>
+      <button id="btn-back-settings" class="btn secondary">Back</button>
+    </div>
+
+    <div id="game-hud" class="screen">
+      <div class="hud-top-left">
+        <div class="health-container">
+          <div id="health-fill" class="health-fill"></div>
+        </div>
+        <div class="gold-container">
+          <div class="gold-icon"></div>
+          <span id="gold-counter">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="game-alert" class="alert hidden">
+      <h2 id="alert-text"></h2>
+    </div>
+
   </div>
   
   <script src="assets/scripts/systems/constants.js"></script>

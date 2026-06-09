@@ -1,6 +1,13 @@
 function fireLaser(targetX, targetY, timestamp = performance.now()) {
-  if (gameState !== "playing") return;
-  if (timestamp - player.lastLaserFire < LASER_FIRE_INTERVAL_MS) return;
+  if (gameState !== "playing" && gameState !== "portalPhase") return;
+  
+  // DEFENSIVE CHECKS: Safely check for items, defaulting to 0 if inventory is missing
+  const syringeStacks = player.items ? player.items.syringe : 0;
+  const glassesStacks = player.items ? player.items.glasses : 0;
+
+  // Syringe gives +15% attack speed
+  const currentCooldown = LASER_FIRE_INTERVAL_MS / (1 + (syringeStacks * 0.15));
+  if (timestamp - player.lastLaserFire < currentCooldown) return;
 
   player.lastLaserFire = timestamp;
 
@@ -10,13 +17,22 @@ function fireLaser(targetX, targetY, timestamp = performance.now()) {
   const length = Math.hypot(dx, dy);
   if (length === 0) return;
 
+  // Lens-Maker's Glasses gives 10% chance to deal double damage per stack
+  let damage = LASER_DAMAGE;
+  let isCrit = false;
+  if (Math.random() < glassesStacks * 0.10) {
+    damage *= 2;
+    isCrit = true;
+  }
+
   lasers.push({
     x: center.x,
     y: center.y,
     vx: (dx / length) * LASER_SPEED,
     vy: (dy / length) * LASER_SPEED,
-    radius: LASER_RADIUS,
-    damage: LASER_DAMAGE,
+    radius: isCrit ? LASER_RADIUS * 1.5 : LASER_RADIUS, 
+    damage: damage,
+    isCrit: isCrit
   });
 }
 
@@ -164,8 +180,8 @@ function checkGoldPickups(delta) {
 }
 
 function drawLasers() {
-  ctx.fillStyle = "#facc15";
   for (const laser of lasers) {
+    ctx.fillStyle = laser.isCrit ? "#ef4444" : "#facc15"; // Crits are Red, Normal is Yellow
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, laser.radius, 0, Math.PI * 2);
     ctx.fill();

@@ -1,9 +1,33 @@
+// --- Screen Navigation Logic ---
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+// Menu Button Event Listeners
+document.getElementById('btn-play').addEventListener('click', () => showScreen('menu-char-select'));
+document.getElementById('btn-settings').addEventListener('click', () => showScreen('menu-settings'));
+document.getElementById('btn-back-char').addEventListener('click', () => showScreen('menu-main'));
+document.getElementById('btn-back-settings').addEventListener('click', () => showScreen('menu-main'));
+
+document.getElementById('btn-start').addEventListener('click', () => {
+  showScreen('game-hud');
+  resetLevel(1);
+});
+
+// Window Resizing Magic
+window.addEventListener('resize', () => {
+  WIDTH = window.innerWidth;
+  HEIGHT = window.innerHeight;
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+});
+
+// --- Game Logic ---
 function resetLevel(level = 1) {
   currentLevel = level;
   const isBossLevel = level % 5 === 0;
-  const enemyCount = isBossLevel ? 1 : 5 + (level * 2);
 
-  // If player doesn't exist or we are hard restarting from death, create new player
   if (!player || level === 1) {
     player = {
       x: WIDTH / 2 - PLAYER_SIZE / 2,
@@ -16,24 +40,25 @@ function resetLevel(level = 1) {
     };
     playerGold = 0;
   } else {
-    // Player survived! Just center them in the new room
     player.x = WIDTH / 2 - PLAYER_SIZE / 2;
     player.y = HEIGHT / 2 - PLAYER_SIZE / 2;
   }
 
-  enemies = [];
-  enemyProjectiles = [];
-  lasers = [];
-  hazards = []; 
-  goldDrops = [];
-  portal = null;
-  elapsed = 0;
-  lastEnemySpawn = 0;
-  enemiesSpawned = 0;
+  enemies = []; enemyProjectiles = []; lasers = []; hazards = []; 
+  goldDrops = []; portal = null; elapsed = 0;
+  lastEnemySpawn = 0; enemiesSpawned = 0;
   gameState = "playing";
 
-  statusEl.textContent = isBossLevel ? `Level ${level} — BOSS STAGE!` : `Level ${level} — Defeat ${enemyCount} enemies.`;
-  statusEl.className = "status alive";
+  uiAlert.classList.add("hidden");
+  updateDOMHud();
+}
+
+// Updates the HTML/CSS Health bar and Gold counter
+function updateDOMHud() {
+  if (!player) return;
+  const healthPct = Math.max(0, (player.health / player.maxHealth) * 100);
+  uiHealthFill.style.width = `${healthPct}%`;
+  uiGoldCounter.innerText = playerGold;
 }
 
 function checkLevelComplete() {
@@ -43,8 +68,9 @@ function checkLevelComplete() {
   if (gameState === "playing" && enemiesSpawned >= enemyCount && enemies.length === 0) {
     gameState = "portalPhase";
     portal = { x: WIDTH / 2, y: HEIGHT / 2, radius: PORTAL_RADIUS };
-    statusEl.textContent = "Level Cleared! Enter the center portal.";
-    statusEl.className = "status complete";
+    
+    uiAlertText.innerText = "Level Cleared! Enter Portal.";
+    uiAlert.classList.remove("hidden");
   }
 }
 
@@ -59,117 +85,100 @@ function checkPortalEntry() {
 function trySpawnEnemy(timestamp) {
   const isBossLevel = currentLevel % 5 === 0;
   const enemyCount = isBossLevel ? 1 : 5 + (currentLevel * 2);
-  const spawnInterval = Math.max(500, 2000 - (currentLevel * 100)); // Spawns get faster each level
+  const spawnInterval = Math.max(500, 2000 - (currentLevel * 100));
   
   if (enemiesSpawned >= enemyCount) return;
   if (timestamp - lastEnemySpawn < spawnInterval) return;
 
-  spawnEnemy(isBossLevel); // Pass true if it's a boss level
+  spawnEnemy(isBossLevel);
   lastEnemySpawn = timestamp;
-}
-
-function drawHud() {
-  const isBossLevel = currentLevel % 5 === 0;
-  const enemyCount = isBossLevel ? 1 : 5 + (currentLevel * 2);
-  
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "16px system-ui, sans-serif";
-  ctx.fillText(`Level ${currentLevel}`, 12, 24);
-  const killed = enemiesSpawned - enemies.length;
-  ctx.fillText(`Enemies: ${enemies.length} alive (${killed}/${enemyCount} defeated)`, 12, 44);
-  ctx.fillText(`HP: ${player.health} / ${player.maxHealth}`, 12, 64);
-  ctx.fillText(`Time: ${(elapsed / 1000).toFixed(1)}s`, 12, 84);
-
-  // Draw Gold Counter
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#fde047";
-  ctx.font = "bold 18px system-ui, sans-serif";
-  ctx.fillText(`Gold: ${playerGold}`, WIDTH - 12, 24);
-  ctx.textAlign = "left"; 
 }
 
 function drawPortal() {
   if (gameState !== "portalPhase" || !portal) return;
-  
   ctx.beginPath();
   ctx.arc(portal.x, portal.y, portal.radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#a855f7"; 
-  ctx.fill();
-  ctx.strokeStyle = "#d8b4fe";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 14px system-ui";
-  ctx.textAlign = "center";
-  ctx.fillText("ENTER", portal.x, portal.y - 45);
-  ctx.textAlign = "left";
+  ctx.fillStyle = "#a855f7"; ctx.fill();
+  ctx.strokeStyle = "#d8b4fe"; ctx.lineWidth = 4; ctx.stroke();
+}
+
+function checkPlayerDeath() {
+  if (player.health <= 0 && gameState !== "dead") {
+    gameState = "dead";
+    uiAlertText.innerHTML = `You Died.<br>Level ${currentLevel}<br><span style="font-size: 1rem; color: #94a3b8;">Press R to Restart</span>`;
+    uiAlert.classList.remove("hidden");
+  }
 }
 
 function draw(timestamp) {
   const delta = timestamp - (draw.lastTime || timestamp);
   draw.lastTime = timestamp;
 
-  if (gameState === "playing" || gameState === "portalPhase") {
-    elapsed += delta;
-    updatePlayer();
+  ctx.clearRect(0, 0, WIDTH, HEIGHT); // Always clear the screen
+
+  // Only run logic and draw entities if we are actually playing or in the portal phase
+  if (gameState === "playing" || gameState === "portalPhase" || gameState === "dead") {
     
-    // Allow projectiles to finish out even when portal is open
-    moveProjectiles(lasers, delta);
-    moveProjectiles(enemyProjectiles, delta);
-    lasers = lasers.filter(isOnScreen);
-    
-    enemyProjectiles = enemyProjectiles.filter(p => {
-      if (p.isFireball) {
-        const distTraveled = Math.hypot(p.x - p.startX, p.y - p.startY);
-        if (distTraveled >= p.maxDist) {
-          createLava(p.x, p.y, timestamp);
-          return false;
+    if (gameState !== "dead") {
+      elapsed += delta;
+      updatePlayer();
+      moveProjectiles(lasers, delta);
+      moveProjectiles(enemyProjectiles, delta);
+      lasers = lasers.filter(isOnScreen);
+      
+      enemyProjectiles = enemyProjectiles.filter(p => {
+        if (p.isFireball) {
+          const distTraveled = Math.hypot(p.x - p.startX, p.y - p.startY);
+          if (distTraveled >= p.maxDist) {
+            createLava(p.x, p.y, timestamp);
+            return false;
+          }
         }
+        return isOnScreen(p);
+      });
+
+      updateHazards(timestamp);
+      checkPlayerHits();
+      checkGoldPickups(delta);
+      updateDOMHud(); // Trigger the CSS bar and gold to update
+
+      if (gameState === "playing") {
+        trySpawnEnemy(timestamp);
+        updateEnemies(timestamp, delta);
+        checkLaserHits();
+        checkLevelComplete();
+        checkPlayerDeath(); // Check if health hit 0
+      } else if (gameState === "portalPhase") {
+        checkPortalEntry();
       }
-      return isOnScreen(p);
-    });
-
-    updateHazards(timestamp);
-    checkPlayerHits();
-    checkGoldPickups(delta);
-
-    if (gameState === "playing") {
-      trySpawnEnemy(timestamp);
-      updateEnemies(timestamp, delta);
-      checkLaserHits();
-      checkLevelComplete();
-    } else if (gameState === "portalPhase") {
-      checkPortalEntry();
     }
-  }
 
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  drawHazards(); 
-  drawPortal();
-  drawGold();
-  drawEnemies();
-  drawEnemyProjectiles();
-  drawLasers();
-  drawPlayer();
-  drawHud();
+    // Draw everything
+    drawHazards(); 
+    drawPortal();
+    drawGold();
+    drawEnemies();
+    drawEnemyProjectiles();
+    drawLasers();
+    drawPlayer();
+  }
 
   animationId = requestAnimationFrame(draw);
 }
 
 canvas.addEventListener("mousedown", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const x = (e.clientX - rect.left) * scaleX;
-  const y = (e.clientY - rect.top) * scaleY;
-  fireLaser(x, y, performance.now());
+  // Only shoot if actually in-game
+  if (gameState === "playing" || gameState === "portalPhase") {
+    fireLaser(e.clientX, e.clientY, performance.now());
+  }
 });
 
 window.addEventListener("keydown", (e) => {
   const key = e.key.toLowerCase();
   if (key === "r" && gameState === "dead") {
-    resetLevel(1);
+    showScreen('menu-main');
+    gameState = "menu";
+    uiAlert.classList.add("hidden");
     return;
   }
   if (key in keys) {
@@ -186,5 +195,5 @@ window.addEventListener("keyup", (e) => {
   }
 });
 
-resetLevel(1);
+// Kick off the initial loop
 animationId = requestAnimationFrame(draw);

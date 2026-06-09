@@ -6,16 +6,19 @@ function getPlayerCenter() {
 }
 
 function updatePlayer() {
-  // Allow movement during both playing AND portal phases!
   if (gameState !== "playing" && gameState !== "portalPhase") return;
 
   let dx = 0;
   let dy = 0;
 
-  if (keys.w) dy -= PLAYER_SPEED;
-  if (keys.s) dy += PLAYER_SPEED;
-  if (keys.a) dx -= PLAYER_SPEED;
-  if (keys.d) dx += PLAYER_SPEED;
+  // DEFENSIVE CHECK: If player.items exists, use the hoof count. Otherwise, assume 0.
+  const hoofStacks = player.items ? player.items.hoof : 0;
+  const currentSpeed = PLAYER_SPEED * (1 + (hoofStacks * 0.15));
+
+  if (keys.w) dy -= currentSpeed;
+  if (keys.s) dy += currentSpeed;
+  if (keys.a) dx -= currentSpeed;
+  if (keys.d) dx += currentSpeed;
 
   if (dx !== 0 && dy !== 0) {
     const factor = 1 / Math.SQRT2;
@@ -28,21 +31,14 @@ function updatePlayer() {
 }
 
 function damagePlayer() {
-  if (gameState !== "playing") return;
+  if (gameState !== "playing" && gameState !== "portalPhase") return;
   if (performance.now() < player.invulnerableUntil) return;
 
   player.health -= 1;
   player.invulnerableUntil = performance.now() + PLAYER_DAMAGE_COOLDOWN_MS;
-
-  if (player.health <= 0) {
-    die();
-  }
-}
-
-function die() {
-  gameState = "dead";
-  statusEl.textContent = `You died on level ${currentLevel}. Press R to restart.`;
-  statusEl.className = "status dead";
+  
+  // NOTE: We no longer call die() here! 
+  // checkPlayerDeath() in main.js will now safely catch when health hits 0 and show the UI.
 }
 
 function drawPlayer() {
