@@ -94,7 +94,7 @@ function trySpawnEnemy(timestamp) {
   if (enemiesSpawned >= enemyCount) return;
   if (timestamp - lastEnemySpawn < spawnInterval) return;
 
-  spawnEnemy(isBossLevel);
+  spawnEnemy(timestamp, isBossLevel);
   lastEnemySpawn = timestamp;
 }
 
@@ -128,7 +128,7 @@ function draw(timestamp) {
 
       const prevX = player.x;
       const prevY = player.y;
-      
+
       updatePlayer();
 
       if (delta > 0) {
