@@ -1,3 +1,42 @@
+// Enemy Configuration Registry for easy scaling and clean initialization
+const ENEMY_CONFIGS = {
+  boss: {
+    color: '#fbbf24',
+    getSize: () => BOSS_SIZE,
+    getSpeed: () => BOSS_SPEED,
+    getFireInterval: () => BOSS_FIRE_INTERVAL_MS,
+    getHealth: (level) => 30 + (level * 10)
+  },
+  shooter: {
+    color: '#a855f7',
+    getSize: () => ENEMY_SIZE,
+    getSpeed: () => SHOOTER_SPEED,
+    getFireInterval: () => SHOOTER_FIRE_INTERVAL_MS,
+    getHealth: (level) => ENEMY_HEALTH + Math.floor(level / 2)
+  },
+  melee: {
+    color: '#ef4444',
+    getSize: () => ENEMY_SIZE,
+    getSpeed: () => MELEE_SPEED,
+    getFireInterval: () => 0,
+    getHealth: (level) => ENEMY_HEALTH + Math.floor(level / 2)
+  },
+  mage: {
+    color: '#3b82f6',
+    getSize: () => ENEMY_SIZE,
+    getSpeed: () => MAGE_SPEED,
+    getFireInterval: () => MAGE_FIRE_INTERVAL_MS,
+    getHealth: (level) => ENEMY_HEALTH + Math.floor(level / 2)
+  },
+  lazer: {
+    color: '#ec4899', // Cyberpunk pink/magenta
+    getSize: () => ENEMY_SIZE,
+    getSpeed: () => typeof LAZER_SPEED !== 'undefined' ? LAZER_SPEED : MAGE_SPEED,
+    getFireInterval: () => LAZER_BEAM_DURATION_MS * 1.5,
+    getHealth: (level) => ENEMY_HEALTH + Math.floor(level / 2)
+  }
+};
+
 function randomSpawnPosition() {
   const margin = 40;
   const center = getPlayerCenter();
@@ -11,38 +50,28 @@ function randomSpawnPosition() {
   return { x, y };
 }
 
-function spawnEnemy(forceBoss = false) {
-  // Boss spawns in the top middle, others spawn randomly
-  const pos = forceBoss ? { x: WIDTH / 2 - BOSS_SIZE / 2, y: 100 } : randomSpawnPosition();
-  const type = forceBoss ? 'boss' : ['shooter', 'melee', 'mage'][Math.floor(Math.random() * 3)];
+function spawnEnemy(timestamp, forceBoss = false) {
+  // Added 'lazer' to the random selection pool
+  const type = forceBoss ? 'boss' : ['shooter', 'melee', 'mage', 'lazer'][Math.floor(Math.random() * 4)];
+  const config = ENEMY_CONFIGS[type];
   
-  let color, speed, fireInt, size, health;
-  
-  if (type === 'boss') { 
-    color = '#fbbf24'; 
-    speed = BOSS_SPEED; 
-    fireInt = BOSS_FIRE_INTERVAL_MS; 
-    size = BOSS_SIZE; 
-    health = 30 + (currentLevel * 10); // Boss health scales heavily
-  } else if (type === 'shooter') { 
-    color = '#a855f7'; speed = SHOOTER_SPEED; fireInt = SHOOTER_FIRE_INTERVAL_MS; size = ENEMY_SIZE; health = ENEMY_HEALTH + Math.floor(currentLevel/2); 
-  } else if (type === 'melee') { 
-    color = '#ef4444'; speed = MELEE_SPEED; fireInt = 0; size = ENEMY_SIZE; health = ENEMY_HEALTH + Math.floor(currentLevel/2); 
-  } else if (type === 'mage') { 
-    color = '#3b82f6'; speed = MAGE_SPEED; fireInt = MAGE_FIRE_INTERVAL_MS; size = ENEMY_SIZE; health = ENEMY_HEALTH + Math.floor(currentLevel/2); 
-  }
+  const pos = forceBoss 
+    ? { x: WIDTH / 2 - BOSS_SIZE / 2, y: 100 } 
+    : randomSpawnPosition();
+    
+  const health = config.getHealth(currentLevel);
 
   enemies.push({
     x: pos.x,
     y: pos.y,
-    size: size,
+    size: config.getSize(),
     health: health,
     maxHealth: health,
     type: type,
-    color: color,
-    baseSpeed: speed,
-    fireInterval: fireInt,
-    lastFire: performance.now() + Math.random() * 1000,
+    color: config.color,
+    baseSpeed: config.getSpeed(),
+    fireInterval: config.getFireInterval(),
+    lastFire: timestamp + Math.random() * 1000, 
     isDashing: false,
     dashEndsAt: 0,
     dashAvailableAt: 0,
@@ -58,71 +87,79 @@ function clampEnemyToCanvas(enemy) {
   enemy.y = Math.max(0, Math.min(HEIGHT - enemy.size, enemy.y));
 }
 
+function handleEnemyMovement(enemy, center, timestamp, delta) {
+  const ex = enemy.x + enemy.size / 2;
+  const ey = enemy.y + enemy.size / 2;
+  const dx = center.x - ex;
+  const dy = center.y - ey;
+  const dist = Math.hypot(dx, dy);
+  const step = enemy.baseSpeed * (delta / 16);
+
+  if (enemy.type === 'melee') {
+    if (enemy.isDashing) {
+      if (timestamp >= enemy.dashEndsAt) {
+        enemy.isDashing = false;
+        enemy.dashAvailableAt = timestamp + MELEE_DASH_COOLDOWN_MS;
+      } else {
+        enemy.x += enemy.dashVx * (delta / 16);
+        enemy.y += enemy.dashVy * (delta / 16);
+      }
+    } else {
+      if (dist < MELEE_DASH_RANGE && timestamp >= enemy.dashAvailableAt) {
+        enemy.isDashing = true;
+        enemy.dashEndsAt = timestamp + MELEE_DASH_DURATION_MS;
+        enemy.dashVx = (dx / dist) * MELEE_DASH_SPEED;
+        enemy.dashVy = (dy / dist) * MELEE_DASH_SPEED;
+      } else if (dist > 0) {
+        enemy.x += (dx / dist) * step;
+        enemy.y += (dy / dist) * step;
+      }
+    }
+  } else if (enemy.type === 'boss') {
+    if (dist > 0) {
+      enemy.x += (dx / dist) * step;
+      enemy.y += (dy / dist) * step;
+    }
+  } else {
+    // Ranged units: Shooter, Mage, & Lazer
+    if (dist > 0) {
+      if (dist < ENEMY_RETREAT_RANGE) {
+        enemy.x -= (dx / dist) * step;
+        enemy.y -= (dy / dist) * step;
+      } else if (dist > ENEMY_APPROACH_RANGE) {
+        enemy.x += (dx / dist) * step;
+        enemy.y += (dy / dist) * step;
+      }
+    }
+  }
+}
+
+function handleEnemyCombat(enemy, center, timestamp) {
+  if (enemy.fireInterval === 0 || timestamp - enemy.lastFire < enemy.fireInterval) return;
+
+  if (enemy.type === 'boss') {
+    fireEnemyProjectile(enemy, false);
+    if (Math.random() > 0.6) createLightning(center.x, center.y, timestamp);
+    enemy.lastFire = timestamp;
+  } else if (enemy.type === 'shooter') {
+    fireEnemyProjectile(enemy, false);
+    enemy.lastFire = timestamp;
+  } else if (enemy.type === 'mage') {
+    if (Math.random() > 0.5) fireEnemyProjectile(enemy, true);
+    else createLightning(center.x, center.y, timestamp);
+    enemy.lastFire = timestamp;
+  } else if (enemy.type === 'lazer') {
+    createLazerBeamHazard(enemy, center, timestamp);
+    enemy.lastFire = timestamp;
+  }
+}
+
 function updateEnemies(timestamp, delta) {
   const center = getPlayerCenter();
 
   for (const enemy of enemies) {
-    const ex = enemy.x + enemy.size / 2;
-    const ey = enemy.y + enemy.size / 2;
-    const dx = center.x - ex;
-    const dy = center.y - ey;
-    const dist = Math.hypot(dx, dy);
-    const step = enemy.baseSpeed * (delta / 16);
-
-    if (enemy.type === 'melee') {
-      if (enemy.isDashing) {
-        if (timestamp >= enemy.dashEndsAt) {
-          enemy.isDashing = false;
-          enemy.dashAvailableAt = timestamp + MELEE_DASH_COOLDOWN_MS;
-        } else {
-          enemy.x += enemy.dashVx * (delta / 16);
-          enemy.y += enemy.dashVy * (delta / 16);
-        }
-      } else {
-        if (dist < MELEE_DASH_RANGE && timestamp >= enemy.dashAvailableAt) {
-          enemy.isDashing = true;
-          enemy.dashEndsAt = timestamp + MELEE_DASH_DURATION_MS;
-          enemy.dashVx = (dx / dist) * MELEE_DASH_SPEED;
-          enemy.dashVy = (dy / dist) * MELEE_DASH_SPEED;
-        } else if (dist > 0) {
-          enemy.x += (dx / dist) * step;
-          enemy.y += (dy / dist) * step;
-        }
-      }
-    } else if (enemy.type === 'boss') {
-      // Boss slowly approaches the player endlessly
-      if (dist > 0) {
-        enemy.x += (dx / dist) * step;
-        enemy.y += (dy / dist) * step;
-      }
-      
-      if (timestamp - enemy.lastFire >= enemy.fireInterval) {
-        fireEnemyProjectile(enemy, false); // Shoot standard projectile
-        if (Math.random() > 0.6) createLightning(center.x, center.y, timestamp); // 40% chance to also drop lightning
-        enemy.lastFire = timestamp;
-      }
-    } else {
-      if (dist > 0) {
-        if (dist < ENEMY_RETREAT_RANGE) {
-          enemy.x -= (dx / dist) * step;
-          enemy.y -= (dy / dist) * step;
-        } else if (dist > ENEMY_APPROACH_RANGE) {
-          enemy.x += (dx / dist) * step;
-          enemy.y += (dy / dist) * step;
-        }
-      }
-
-      if (timestamp - enemy.lastFire >= enemy.fireInterval) {
-        if (enemy.type === 'shooter') {
-          fireEnemyProjectile(enemy, false);
-        } else if (enemy.type === 'mage') {
-          if (Math.random() > 0.5) fireEnemyProjectile(enemy, true);
-          else createLightning(center.x, center.y, timestamp);
-        }
-        enemy.lastFire = timestamp;
-      }
-    }
-
+    handleEnemyMovement(enemy, center, timestamp, delta);
+    handleEnemyCombat(enemy, center, timestamp);
     clampEnemyToCanvas(enemy);
   }
 }

@@ -1,11 +1,9 @@
 function fireLaser(targetX, targetY, timestamp = performance.now()) {
   if (gameState !== "playing" && gameState !== "portalPhase") return;
   
-  // DEFENSIVE CHECKS: Safely check for items, defaulting to 0 if inventory is missing
   const syringeStacks = player.items ? player.items.syringe : 0;
   const glassesStacks = player.items ? player.items.glasses : 0;
 
-  // Syringe gives +15% attack speed
   const currentCooldown = LASER_FIRE_INTERVAL_MS / (1 + (syringeStacks * 0.15));
   if (timestamp - player.lastLaserFire < currentCooldown) return;
 
@@ -17,7 +15,6 @@ function fireLaser(targetX, targetY, timestamp = performance.now()) {
   const length = Math.hypot(dx, dy);
   if (length === 0) return;
 
-  // Lens-Maker's Glasses gives 10% chance to deal double damage per stack
   let damage = LASER_DAMAGE;
   let isCrit = false;
   if (Math.random() < glassesStacks * 0.10) {
@@ -42,6 +39,77 @@ function createLightning(x, y, timestamp) {
 
 function createLava(x, y, timestamp) {
   hazards.push({ type: 'lava', x: x, y: y, radius: LAVA_RADIUS, endsAt: timestamp + LAVA_DURATION_MS });
+}
+
+function createLazerBeamHazard(enemy, center, timestamp) {
+  const ex = enemy.x + enemy.size / 2;
+  const ey = enemy.y + enemy.size / 2;
+  
+  // Predict where the player will be in 0.5 seconds (500 milliseconds)
+  const leadTimeMS = 100;
+  const predictedX = center.x + (player.vx || 0) * leadTimeMS;
+  const predictedY = center.y + (player.vy || 0) * leadTimeMS;
+
+  const dx = predictedX - ex;
+  const dy = predictedY - ey;
+  
+  // Base angle points straight at the predicted intercept target location
+  const playerAngle = Math.atan2(dy, dx);
+  const duration = LAZER_BEAM_DURATION_MS;
+  const beamThickness = typeof LAZER_BEAM_THICKNESS !== 'undefined' ? LAZER_BEAM_THICKNESS : 4;
+
+  // Randomize initial rotational direction: 1 = Clockwise start, -1 = Counter-Clockwise start
+  const sweepDir = Math.random() < 0.5 ? 1 : -1;
+  const arc = Math.PI / 4; // Exactly 45 degrees total sweep window
+  
+  // Initialize to the exact mathematical edge angle to fix the 1-frame spawn jitter bug
+  const initialAngle = playerAngle - (sweepDir * arc / 2);
+
+  hazards.push({
+    type: 'lazer_beam',
+    enemy: enemy,            
+    playerAngle: playerAngle, 
+    createdAt: timestamp,
+    endsAt: timestamp + duration,
+    sweepDir: sweepDir,
+    angle: initialAngle,
+    radius: beamThickness     
+  });
+}
+
+// Math helper to get current angle of the beam based on time interpolation
+function getLazerBeamAngle(h, timestamp) {
+  const totalDuration = h.endsAt - h.createdAt;
+  const halfDuration = totalDuration / 2;
+  const elapsed = timestamp - h.createdAt;
+  const arc = Math.PI / 4; // 45 degrees total sweep field
+  const startAngle = h.playerAngle - (h.sweepDir * arc / 2); 
+
+  if (elapsed < halfDuration) {
+    // Phase 1: Sweep Out (0 to 45 degrees)
+    const progress = elapsed / halfDuration;
+    return startAngle + progress * (h.sweepDir * arc);
+  } else {
+    // Phase 2: Sweep Back (45 back down to 0 degrees)
+    const progress = (elapsed - halfDuration) / halfDuration;
+    return (startAngle + h.sweepDir * arc) - progress * (h.sweepDir * arc);
+  }
+}
+
+// Capsule/Line-Circle Intersection collision algorithm helper
+function lineCircleOverlap(x1, y1, x2, y2, cx, cy, r) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(cx - x1, cy - y1) <= r;
+  
+  let t = ((cx - x1) * dx + (cy - y1) * dy) / l2;
+  t = Math.max(0, Math.min(1, t)); // Clamp to structural segment limits
+  
+  const closestX = x1 + t * dx;
+  const closestY = y1 + t * dy;
+  
+  return Math.hypot(cx - closestX, cy - closestY) <= r;
 }
 
 function fireEnemyProjectile(enemy, isFireball = false) {
@@ -70,11 +138,20 @@ function moveProjectiles(list, delta) {
   }
 }
 
+function moveHazards(list, timestamp) {
+  for (const h of list) {
+    if (h.type === 'lazer_beam') {
+      h.angle = getLazerBeamAngle(h, timestamp);
+    }
+  }
+}
+
 function updateHazards(timestamp) {
   const remaining = [];
   for (const h of hazards) {
     if (timestamp > h.endsAt) continue; 
     if (h.type === 'lightning' && timestamp >= h.strikesAt && !h.hasStruck) h.hasStruck = true; 
+    if (h.type === 'lazer_beam' && h.enemy.health <= 0) continue;
     remaining.push(h);
   }
   hazards = remaining;
@@ -94,9 +171,8 @@ function checkLaserHits() {
         enemy.health -= laser.damage;
         hit = true;
         
-        // Drop Gold on Death
         if (enemy.health <= 0) {
-          const dropCount = enemy.type === 'boss' ? 25 : 1; // Boss drops a massive pile of gold
+          const dropCount = enemy.type === 'boss' ? 25 : 1;
           for(let i = 0; i < dropCount; i++) {
              goldDrops.push({
                 x: ex + (Math.random() * 20 - 10),
@@ -115,7 +191,8 @@ function checkLaserHits() {
   enemies = enemies.filter((e) => e.health > 0);
 }
 
-function checkPlayerHits() {
+// Added timestamp dependency parameter to accurately check moving ray hitboxes
+function checkPlayerHits(timestamp) {
   if (gameState !== "playing" && gameState !== "portalPhase") return;
 
   const center = getPlayerCenter();
@@ -141,6 +218,19 @@ function checkPlayerHits() {
   for (const h of hazards) {
     if (h.type === 'lava' || (h.type === 'lightning' && h.hasStruck)) {
       if (circlesOverlap(center.x, center.y, playerRadius, h.x, h.y, h.radius)) damagePlayer();
+    } else if (h.type === 'lazer_beam') {
+      // Linear vector mapping for sweeping laser hit calculations
+      const ex = h.enemy.x + h.enemy.size / 2;
+      const ey = h.enemy.y + h.enemy.size / 2;
+      const angle = h.angle;
+      
+      const beamLength = 3000; // Large arbitrary scale factor to extend off-canvas
+      const bx = ex + Math.cos(angle) * beamLength;
+      const by = ey + Math.sin(angle) * beamLength;
+
+      if (lineCircleOverlap(ex, ey, bx, by, center.x, center.y, playerRadius + h.radius)) {
+        damagePlayer();
+      }
     }
   }
 }
@@ -155,21 +245,16 @@ function checkGoldPickups(delta) {
     let dy = center.y - gold.y;
     let dist = Math.hypot(dx, dy);
 
-    // If the player is close enough, magnetize the gold!
     if (dist < GOLD_MAGNET_RANGE && dist > 0) {
       const speed = GOLD_MAGNET_SPEED * (delta / 16);
-      
-      // Move the gold towards the player
       gold.x += (dx / dist) * Math.min(speed, dist);
       gold.y += (dy / dist) * Math.min(speed, dist);
       
-      // Recalculate distance after the gold moves
       dx = center.x - gold.x;
       dy = center.y - gold.y;
       dist = Math.hypot(dx, dy);
     }
 
-    // Check if picked up (using the much larger invisible radius)
     if (dist < playerRadius + GOLD_PICKUP_RADIUS) {
       playerGold += gold.value;
     } else {
@@ -181,7 +266,7 @@ function checkGoldPickups(delta) {
 
 function drawLasers() {
   for (const laser of lasers) {
-    ctx.fillStyle = laser.isCrit ? "#ef4444" : "#facc15"; // Crits are Red, Normal is Yellow
+    ctx.fillStyle = laser.isCrit ? "#ef4444" : "#facc15";
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, laser.radius, 0, Math.PI * 2);
     ctx.fill();
@@ -197,22 +282,42 @@ function drawEnemyProjectiles() {
   }
 }
 
-function drawHazards() {
+// Added timestamp dependency parameter to accurately render moving ray beams
+function drawHazards(timestamp) {
   for (const h of hazards) {
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
-    if (h.type === 'lava') {
-      ctx.fillStyle = "rgba(239, 68, 68, 0.4)";
-      ctx.fill();
-    } else if (h.type === 'lightning') {
-      if (h.hasStruck) {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    if (h.type === 'lava' || h.type === 'lightning') {
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
+      if (h.type === 'lava') {
+        ctx.fillStyle = "rgba(239, 68, 68, 0.4)";
         ctx.fill();
-      } else {
-        ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-        ctx.lineWidth = 3;
-        ctx.stroke();
+      } else if (h.type === 'lightning') {
+        if (h.hasStruck) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
       }
+    } else if (h.type === 'lazer_beam') {
+      
+      const ex = h.enemy.x + h.enemy.size / 2;
+      const ey = h.enemy.y + h.enemy.size / 2;
+      const angle = h.angle;
+      
+      const beamLength = 3000;
+      const bx = ex + Math.cos(angle) * beamLength;
+      const by = ey + Math.sin(angle) * beamLength;
+
+      ctx.strokeStyle = h.enemy.color; // Matches the pink neon color configuration
+      ctx.lineWidth = h.radius * 2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
     }
   }
 }

@@ -63,6 +63,8 @@ const GOLD_MAGNET_RANGE = 150;
 const GOLD_MAGNET_SPEED = 8.0; 
 const PORTAL_RADIUS = 30;
 
+const LAZER_BEAM_DURATION_MS = 5500;
+
 const keys = { w: false, a: false, s: false, d: false };
 
 let player;
