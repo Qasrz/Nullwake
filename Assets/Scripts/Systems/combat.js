@@ -15,7 +15,8 @@ function fireLaser(targetX, targetY, timestamp = performance.now()) {
   const length = Math.hypot(dx, dy);
   if (length === 0) return;
 
-  let damage = LASER_DAMAGE;
+  let baseDamage = LASER_DAMAGE * (1 + (player.level - 1) * 0.5);
+  let damage = baseDamage;
   let isCrit = false;
   if (Math.random() < glassesStacks * 0.10) {
     damage *= 2;
@@ -172,6 +173,14 @@ function checkLaserHits() {
         hit = true;
         
         if (enemy.health <= 0) {
+
+          let xpReward = 1; 
+          if (enemy.type === 'boss') xpReward = 100;
+          else if (enemy.type === 'mage') xpReward = 3;
+          else if (enemy.type === 'lazer') xpReward = 2;
+  
+          gainXp(xpReward);
+
           const dropCount = enemy.type === 'boss' ? 25 : 1;
           for(let i = 0; i < dropCount; i++) {
              goldDrops.push({

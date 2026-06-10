@@ -52,6 +52,12 @@
         <div class="health-container">
           <div id="health-fill" class="health-fill"></div>
         </div>
+        
+        <div class="xp-container" style="width: 200px; height: 8px; background: #1e293b; border: 1px solid #475569; margin-top: 4px; border-radius: 2px; overflow: hidden; display: flex; align-items: center; position: relative;">
+          <div id="xp-fill" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.1s ease;"></div>
+          <span id="level-text" style="position: absolute; right: 4px; font-size: 8px; color: #ffffff; font-family: sans-serif; font-weight: bold; line-height: 8px;">LVL 1</span>
+        </div>
+    
         <div class="gold-container">
           <div class="gold-icon"></div>
           <span id="gold-counter">0</span>
@@ -59,6 +65,7 @@
       </div>
     </div>
 
+    
     <div id="game-alert" class="alert hidden">
       <h2 id="alert-text"></h2>
     </div>
