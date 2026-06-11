@@ -10,6 +10,8 @@ const uiHealthFill = document.getElementById("health-fill");
 const uiGoldCounter = document.getElementById("gold-counter");
 const uiAlert = document.getElementById("game-alert");
 const uiAlertText = document.getElementById("alert-text");
+const uiXpFill = document.getElementById("xp-fill");
+const uiLevelText = document.getElementById("level-text");
 
 const PLAYER_SIZE = 24;
 const PLAYER_SPEED = 4;

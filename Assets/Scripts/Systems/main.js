@@ -38,7 +38,10 @@ function resetLevel(level = 1) {
       invulnerableUntil: 0,
       lastLaserFire: 0,
       vx: 0,
-      vy: 0
+      vy: 0,
+      level: 1,
+      xp: 0, 
+      xpNeeded: 10
     };
     playerGold = 0;
   } else {
@@ -63,6 +66,14 @@ function updateDOMHud() {
   const healthPct = Math.max(0, (player.health / player.maxHealth) * 100);
   uiHealthFill.style.width = `${healthPct}%`;
   uiGoldCounter.innerText = playerGold;
+
+  if (uiXpFill) {
+    const xpPct = Math.max(0, Math.min(100, (player.xp / player.xpNeeded) * 100));
+    uiXpFill.style.width = `${xpPct}%`;
+  }
+  if (uiLevelText) {
+    uiLevelText.innerText = `LVL ${player.level}`;
+  }
 }
 
 function checkLevelComplete() {

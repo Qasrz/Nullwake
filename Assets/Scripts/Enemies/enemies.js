@@ -60,6 +60,16 @@ function spawnEnemy(timestamp, forceBoss = false) {
     : randomSpawnPosition();
     
   const health = config.getHealth(currentLevel);
+  const fireInterval = config.getFireInterval();
+
+  // Determine the initial lastFire timestamp
+  let initialLastFire = timestamp + Math.random() * 1000;
+  
+  // FIX: If it's a lazer enemy, reduce its initial spawn-in wait time
+  if (type === 'lazer') {
+    const initialDelay = 1000 + Math.random() * 1000; // Gives it a brief 400ms - 800ms window before firing
+    initialLastFire = timestamp - fireInterval + initialDelay;
+  }
 
   enemies.push({
     x: pos.x,
@@ -71,7 +81,7 @@ function spawnEnemy(timestamp, forceBoss = false) {
     color: config.color,
     baseSpeed: config.getSpeed(),
     fireInterval: config.getFireInterval(),
-    lastFire: timestamp + Math.random() * 1000, 
+    lastFire: initialLastFire, 
     isDashing: false,
     dashEndsAt: 0,
     dashAvailableAt: 0,

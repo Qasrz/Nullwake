@@ -49,3 +49,20 @@ function drawPlayer() {
   ctx.lineWidth = 2;
   ctx.strokeRect(player.x, player.y, player.size, player.size);
 }
+
+function gainXp(amount) {
+  if (!player) return;
+  
+  player.xp += amount;
+  
+  // While loop handles cases where an enemy awards enough XP to skip multiple levels at once
+  while (player.xp >= player.xpNeeded) {
+    player.xp -= player.xpNeeded;
+    player.level++;
+    
+    // Scale up the required XP threshold for successive levels dynamically
+    player.xpNeeded = Math.floor(player.xpNeeded * 1.5) + 5; 
+    
+    console.log(`Leveled up! Reached Level ${player.level}`);
+  }
+}
