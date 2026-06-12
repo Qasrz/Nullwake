@@ -263,6 +263,9 @@ const ENEMY_STATS = {
   shooter: { health: 50, damage: 30 },
   mage: { health: 50, damage: 30 },
   lazer: { health: 50, damage: 30 },
+  splitter: { health: 70, damage: 28 },
+  orbiter: { health: 65, damage: 26 },
+  miniboss: { health: 360, damage: 42 },
   boss: { health: 650, damage: 50 }
 };
 
@@ -318,6 +321,16 @@ let floatingTexts = [];
 let goldDrops = [];
 let playerGold = 0; 
 let portal = null; 
+let portals = [];
+let currentStageRoute = null;
+let pendingStageRoutes = [];
+let currentStageEvent = null;
+let survivalEndsAt = 0;
+let routeMinibossSpawned = false;
+let routeCacheSpawned = false;
+let stageCompleteHandled = false;
+let lastRoutePatternAt = 0;
+let lastStageEventAt = 0;
 let activeArena = null;
 let activeToast = null;
 let screenShake = { amount: 0, endsAt: 0 };

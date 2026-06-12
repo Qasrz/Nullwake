@@ -116,7 +116,8 @@ function chooseShopItems(count = 4) {
 
 function openShop() {
   gameState = "shop";
-  currentShopChoices = chooseShopItems(currentLevel % 5 === 0 ? 5 : 4);
+  const routeBonusChoices = typeof getStageShopChoiceBonus === "function" ? getStageShopChoiceBonus() : 0;
+  currentShopChoices = chooseShopItems((currentLevel % 5 === 0 ? 5 : 4) + routeBonusChoices);
   Object.keys(keys).forEach(key => keys[key] = false);
 
   if (uiAlert) uiAlert.classList.add("hidden");
@@ -128,9 +129,10 @@ function openShop() {
 function closeShopAndOpenPortal() {
   if (uiShopOverlay) uiShopOverlay.classList.add("hidden");
   gameState = "portalPhase";
-  portal = createPortalAwayFromPlayer();
+  portals = createRoutePortalsForNextStage();
+  portal = portals[0] || null;
 
-  uiAlertText.innerText = "Shop closed. Enter the portal.";
+  uiAlertText.innerText = portals.length > 1 ? "Choose a route. Gold outline means elite danger." : "Boss portal stabilized.";
   uiAlert.classList.remove("hidden");
 }
 
@@ -138,7 +140,10 @@ function renderShop() {
   if (!uiShopItems || !uiShopGold) return;
 
   uiShopGold.innerText = playerGold;
-  if (uiShopTitle) uiShopTitle.innerText = currentLevel % 5 === 0 ? `Boss Cache: Stage ${currentLevel}` : `Stage ${currentLevel} Cleared`;
+  if (uiShopTitle) {
+    const routeName = currentStageRoute && currentStageRoute.mode !== "boss" ? ` - ${currentStageRoute.shortName}` : "";
+    uiShopTitle.innerText = currentLevel % 5 === 0 ? `Boss Cache: Stage ${currentLevel}` : `Stage ${currentLevel}${routeName} Cleared`;
+  }
 
   uiShopItems.innerHTML = currentShopChoices.map(itemId => {
     const item = getItemDefinition(itemId);

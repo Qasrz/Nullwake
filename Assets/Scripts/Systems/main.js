@@ -61,7 +61,7 @@ window.addEventListener('resize', () => {
 });
 
 // --- Game Logic ---
-function resetLevel(level = 1) {
+function resetLevel(level = 1, selectedRoute = null) {
   currentLevel = level;
   const now = performance.now();
 
@@ -94,15 +94,18 @@ function resetLevel(level = 1) {
   missiles = [];
   goldDrops = [];
   portal = null;
+  portals = [];
   activeArena = null;
   elapsed = 0;
   lastEnemySpawn = 0;
   enemiesSpawned = 0;
   gameState = "playing";
+  initializeStageRoute(level, selectedRoute, now);
+  resetAbilityCooldowns();
 
   if (uiShopOverlay) uiShopOverlay.classList.add("hidden");
   uiAlert.classList.add("hidden");
-  showToast(getStageTheme(level).name, level % 5 === 0 ? "Boss signal converging" : "The zone shifts around you", 1800);
+  showToast(getStageTheme(level).name, getStageIntroText(), 1800);
   updateDOMHud();
 }
 
@@ -122,7 +125,8 @@ function updateDOMHud() {
     uiLevelText.innerText = `LVL ${player.level}`;
   }
   if (uiStageText) {
-    uiStageText.innerText = `${getStageTheme(currentLevel).name} | Stage ${currentLevel}`;
+    const routeLabel = typeof getStageRouteHudLabel === "function" ? getStageRouteHudLabel() : "";
+    uiStageText.innerText = `${getStageTheme(currentLevel).name} | Stage ${currentLevel}${routeLabel ? ` | ${routeLabel}` : ""}`;
   }
   if (uiStatsText) {
     const damage = Math.round(PLAYER_BASE_DAMAGE * getPlayerDamageMultiplier());
@@ -145,40 +149,66 @@ function collectRemainingGoldDrops() {
   goldDrops = [];
 }
 
-function createPortalAwayFromPlayer() {
+function createRoutePortalsForNextStage() {
+  const routes = createStageRouteChoices(currentLevel + 1);
   const center = getPlayerCenter();
-  const candidates = [
-    { x: WIDTH / 2, y: HEIGHT / 2 },
-    { x: WIDTH * 0.74, y: HEIGHT * 0.5 },
-    { x: WIDTH * 0.26, y: HEIGHT * 0.5 },
-    { x: WIDTH * 0.5, y: HEIGHT * 0.74 },
-    { x: WIDTH * 0.5, y: HEIGHT * 0.26 }
+
+  if (routes.length === 1) {
+    const candidates = [
+      { x: WIDTH / 2, y: HEIGHT / 2 },
+      { x: WIDTH * 0.74, y: HEIGHT * 0.5 },
+      { x: WIDTH * 0.26, y: HEIGHT * 0.5 },
+      { x: WIDTH * 0.5, y: HEIGHT * 0.74 },
+      { x: WIDTH * 0.5, y: HEIGHT * 0.26 }
+    ];
+    const chosen = candidates
+      .map(candidate => ({ ...candidate, dist: Math.hypot(candidate.x - center.x, candidate.y - center.y) }))
+      .sort((a, b) => b.dist - a.dist)[0];
+
+    return [{
+      x: chosen.x,
+      y: chosen.y,
+      radius: PORTAL_RADIUS + 6,
+      activeAt: performance.now() + 700,
+      route: routes[0]
+    }];
+  }
+
+  const y = clamp(HEIGHT * 0.54, 190, HEIGHT - 130);
+  const positions = [
+    { x: WIDTH * 0.34, y },
+    { x: WIDTH * 0.66, y }
   ];
 
-  const chosen = candidates
-    .map(candidate => ({ ...candidate, dist: Math.hypot(candidate.x - center.x, candidate.y - center.y) }))
-    .sort((a, b) => b.dist - a.dist)[0];
-
-  return {
-    x: chosen.x,
-    y: chosen.y,
-    radius: PORTAL_RADIUS,
-    activeAt: performance.now() + 700
-  };
+  return routes.map((route, index) => ({
+    x: positions[index].x,
+    y: positions[index].y,
+    radius: PORTAL_RADIUS + 5,
+    activeAt: performance.now() + 700,
+    route
+  }));
 }
 
-function checkLevelComplete() {
+function completeStage(timestamp = performance.now()) {
+  if (stageCompleteHandled) return;
+  stageCompleteHandled = true;
   const isBossLevel = currentLevel % 5 === 0;
-  const enemyCount = getStageEnemyCount(currentLevel);
 
-  if (gameState === "playing" && enemiesSpawned >= enemyCount && enemies.length === 0) {
-    noteStageCleared();
-    applyDifficultyRegen(isBossLevel);
-    collectRemainingGoldDrops();
-    enemyProjectiles = [];
-    hazards = [];
-    lasers = [];
-    openShop();
+  noteStageCleared();
+  applyDifficultyRegen(isBossLevel);
+  collectRemainingGoldDrops();
+  applyStageRouteRewards();
+  enemies = [];
+  enemyProjectiles = [];
+  hazards = [];
+  lasers = [];
+  activeArena = null;
+  openShop();
+}
+
+function checkLevelComplete(timestamp = performance.now()) {
+  if (gameState === "playing" && isCurrentStageComplete(timestamp)) {
+    completeStage(timestamp);
   }
 }
 
@@ -192,18 +222,23 @@ function applyDifficultyRegen(isBossLevel) {
 }
 
 function checkPortalEntry() {
-  if (gameState !== "portalPhase" || !portal) return;
-  if (performance.now() < (portal.activeAt || 0)) return;
+  if (gameState !== "portalPhase" || !portals || portals.length === 0) return;
+  const now = performance.now();
   const center = getPlayerCenter();
-  if (circlesOverlap(center.x, center.y, player.size / 2, portal.x, portal.y, portal.radius)) {
-    resetLevel(currentLevel + 1);
+
+  for (const routePortal of portals) {
+    if (now < (routePortal.activeAt || 0)) continue;
+    if (circlesOverlap(center.x, center.y, player.size / 2, routePortal.x, routePortal.y, routePortal.radius)) {
+      resetLevel(currentLevel + 1, routePortal.route);
+      return;
+    }
   }
 }
 
 function trySpawnEnemy(timestamp) {
   const isBossLevel = currentLevel % 5 === 0;
-  const enemyCount = getStageEnemyCount(currentLevel);
-  const spawnInterval = getStageSpawnInterval(currentLevel);
+  const enemyCount = getCurrentStageEnemyTarget(currentLevel);
+  const spawnInterval = getCurrentStageSpawnInterval(currentLevel);
   
   if (enemiesSpawned >= enemyCount) return;
   if (timestamp - lastEnemySpawn < spawnInterval) return;
@@ -213,15 +248,47 @@ function trySpawnEnemy(timestamp) {
 }
 
 function drawPortal() {
-  if (gameState !== "portalPhase" || !portal) return;
-  const active = performance.now() >= (portal.activeAt || 0);
-  ctx.beginPath();
-  ctx.arc(portal.x, portal.y, portal.radius, 0, Math.PI * 2);
-  ctx.fillStyle = active ? "#a855f7" : "rgba(168, 85, 247, 0.38)";
-  ctx.fill();
-  ctx.strokeStyle = active ? "#d8b4fe" : "rgba(216, 180, 254, 0.58)";
-  ctx.lineWidth = 4;
-  ctx.stroke();
+  if (gameState !== "portalPhase" || !portals || portals.length === 0) return;
+
+  const now = performance.now();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for (const routePortal of portals) {
+    const route = routePortal.route || STAGE_ROUTE_DEFS.onslaught;
+    const active = now >= (routePortal.activeAt || 0);
+    const pulse = 1 + Math.sin(now * 0.006 + routePortal.x) * 0.08;
+    const radius = routePortal.radius * pulse;
+
+    ctx.save();
+    ctx.globalAlpha = active ? 1 : 0.52;
+    ctx.shadowColor = route.color;
+    ctx.shadowBlur = active ? 24 : 10;
+    ctx.beginPath();
+    ctx.arc(routePortal.x, routePortal.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = route.color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = route.elite ? "#facc15" : "#f8fafc";
+    ctx.lineWidth = route.elite ? 7 : 4;
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(15, 23, 42, 0.72)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(routePortal.x, routePortal.y, radius * 0.62, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1;
+    ctx.font = "800 14px system-ui, sans-serif";
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText(route.shortName || route.name, routePortal.x, routePortal.y + routePortal.radius + 24);
+    ctx.font = "700 11px system-ui, sans-serif";
+    ctx.fillStyle = route.elite ? "#fde68a" : "#cbd5e1";
+    ctx.fillText(route.elite ? `Elite ${route.rewardText}` : route.rewardText, routePortal.x, routePortal.y + routePortal.radius + 40);
+    ctx.restore();
+  }
 }
 
 function checkPlayerDeath() {
@@ -289,11 +356,12 @@ function draw(timestamp) {
       updateDOMHud();
 
       if (gameState === "playing") {
+        updateStageRoute(timestamp, delta);
         trySpawnEnemy(timestamp);
         updateEnemies(timestamp, delta);
         checkLaserHits();
         cleanupDeadEnemies();
-        checkLevelComplete();
+        checkLevelComplete(timestamp);
         checkPlayerDeath();
       } else if (gameState === "portalPhase") {
         checkPortalEntry();

@@ -36,6 +36,19 @@ function markAbilityUsed(slot, timestamp = performance.now()) {
   noteAbilityUsed();
 }
 
+function resetAbilityCooldowns() {
+  if (!player) return;
+
+  const character = getSelectedCharacterDef();
+  player.abilities = player.abilities || {};
+
+  Object.keys(character.abilities).forEach(slot => {
+    player.abilities[slot] = { lastUsed: -Infinity };
+  });
+
+  player.charge = null;
+}
+
 function beginAbilityCharge(slot, timestamp = performance.now()) {
   if (isPlayerFrozen(timestamp)) return;
   const ability = getAbilityDef(slot);
@@ -51,7 +64,7 @@ function releaseAbilityCharge(slot, timestamp = performance.now()) {
 }
 
 function useAbility(slot, targetX = mouseX, targetY = mouseY, timestamp = performance.now(), heldMs = 0) {
-  if (!player || gameState !== "playing") return;
+  if (!player || (gameState !== "playing" && gameState !== "portalPhase")) return;
   if (isPlayerFrozen(timestamp)) return;
   const ability = getAbilityDef(slot);
   if (!ability || !isAbilityReady(slot, timestamp)) return;

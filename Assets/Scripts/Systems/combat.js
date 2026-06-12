@@ -401,6 +401,10 @@ function killEnemy(enemy) {
   burstParticles(ex, ey, enemy.color || "#f8fafc", enemy.type === "boss" ? 42 : 12, enemy.type === "boss" ? 5.5 : 2.5);
   addScreenShake(enemy.type === "boss" ? 16 : 3, enemy.type === "boss" ? 650 : 160);
 
+  if (enemy.type === "splitter" && !enemy.splitChild && typeof spawnSplitChildren === "function") {
+    spawnSplitChildren(enemy);
+  }
+
   if (enemy.type === "boss") {
     showToast(`${enemy.bossName || "Boss"} defeated`, "The rift stabilizes. Claim your spoils.", 2800);
     activeArena = null;
@@ -410,7 +414,7 @@ function killEnemy(enemy) {
 
 function dropGoldForEnemy(enemy) {
   const totalGold = getEnemyGoldReward(enemy);
-  const coinCount = enemy.type === "boss" ? 18 : Math.max(2, Math.min(8, Math.ceil(totalGold / 3)));
+  const coinCount = enemy.type === "boss" ? 18 : enemy.type === "miniboss" ? 12 : Math.max(2, Math.min(8, Math.ceil(totalGold / 3)));
   let remaining = totalGold;
 
   for (let i = 0; i < coinCount; i++) {
@@ -556,6 +560,7 @@ function createTwinLazerBeamHazard(enemy, center, timestamp) {
   const duration = LAZER_BEAM_DURATION_MS * 0.72;
   const beamThickness = typeof LAZER_BEAM_THICKNESS !== 'undefined' ? LAZER_BEAM_THICKNESS : 4;
   const sweepDir = Math.random() < 0.5 ? 1 : -1;
+  const arc = Math.PI / 4;
 
   for (const beamAngle of [angle, angle + Math.PI]) {
     hazards.push({
@@ -565,7 +570,7 @@ function createTwinLazerBeamHazard(enemy, center, timestamp) {
       createdAt: timestamp,
       endsAt: timestamp + duration,
       sweepDir: sweepDir,
-      angle: beamAngle,
+      angle: beamAngle - (sweepDir * arc / 2),
       radius: beamThickness + 1,
       damage: enemy.damage * 0.85,
       eliteTwin: true

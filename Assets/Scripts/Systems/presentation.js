@@ -294,7 +294,8 @@ function updateRunHud(timestamp) {
   }
 
   if (uiObjectiveText && !enemies.some(enemy => enemy.type === "boss" && !enemy.dead)) {
-    const isBossLevel = currentLevel % 5 === 0;
-    uiObjectiveText.innerText = isBossLevel ? "Boss signal detected" : "Clear the wave";
+    uiObjectiveText.innerText = typeof getStageObjectiveText === "function"
+      ? getStageObjectiveText(timestamp)
+      : currentLevel % 5 === 0 ? "Boss signal detected" : "Clear the wave";
   }
 }
