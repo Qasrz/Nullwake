@@ -55,6 +55,8 @@ function initializeBossEnemy(enemy, timestamp) {
   enemy.phase = 1;
   enemy.patternIndex = 0;
   enemy.bossStartedAt = timestamp;
+  enemy.phaseChangedAt = timestamp;
+  enemy.lastPatternAt = -Infinity;
   enemy.nextPatternAt = timestamp + 1100;
   enemy.nextMoveAt = timestamp;
   enemy.targetX = WIDTH / 2 - enemy.size / 2;
@@ -85,6 +87,7 @@ function updateBossEnemy(enemy, center, timestamp, delta) {
 
   if (nextPhase !== enemy.phase) {
     enemy.phase = nextPhase;
+    enemy.phaseChangedAt = timestamp;
     enemy.nextPatternAt = timestamp + 650;
     setBossArena(enemy, def, enemy.phase);
     addScreenShake(12 + enemy.phase * 3, 500);
@@ -119,6 +122,7 @@ function moveBoss(enemy, center, timestamp, delta) {
 
 function runBossPattern(enemy, center, timestamp) {
   enemy.patternIndex++;
+  enemy.lastPatternAt = timestamp;
 
   if (enemy.bossId === "prismWarden") {
     runPrismWardenPattern(enemy, center, timestamp);

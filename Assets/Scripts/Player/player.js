@@ -62,6 +62,7 @@ function damagePlayer(amount = 1) {
   if (performance.now() < player.invulnerableUntil) return;
 
   player.health -= amount;
+  noteDamageTaken(amount);
   player.invulnerableUntil = performance.now() + PLAYER_DAMAGE_COOLDOWN_MS;
   addScreenShake(Math.min(10, 3 + amount * 0.08), 180);
   burstParticles(player.x + player.size / 2, player.y + player.size / 2, "#ef4444", 6, 2.4);
@@ -70,16 +71,84 @@ function damagePlayer(amount = 1) {
 }
 
 function drawPlayer() {
-  const invulnerable = performance.now() < player.invulnerableUntil;
+  const now = performance.now();
+  const invulnerable = now < player.invulnerableUntil;
   const character = getSelectedCharacterDef();
-  ctx.fillStyle = gameState === "dead" ? "#64748b" : invulnerable ? "#ffffff" : character.color;
-  ctx.fillRect(player.x, player.y, player.size, player.size);
-  ctx.strokeStyle = invulnerable ? character.color : "#0f172a";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(player.x, player.y, player.size, player.size);
+  const cx = player.x + player.size / 2;
+  const cy = player.y + player.size / 2;
+  const color = gameState === "dead" ? "#64748b" : invulnerable ? "#ffffff" : character.color;
+  const t = now * 0.006;
+  const moving = Math.abs(player.vx || 0) + Math.abs(player.vy || 0) > 0.01;
+  const recentlyAttacked = now - player.lastLaserFire < 180;
+  const spriteRow = player.charge ? "ability" : recentlyAttacked ? "attack" : moving ? "move" : "idle";
+  const drewSprite = drawSpriteCentered("characters", character.id, cx, cy, player.size * 1.9, spriteRow, {
+    timestamp: now,
+    fps: moving ? 10 : 7,
+    filter: invulnerable ? "brightness(1.9)" : gameState === "dead" ? "grayscale(1)" : undefined,
+    shadowColor: invulnerable ? "#ffffff" : character.color,
+    shadowBlur: invulnerable ? 18 : 6
+  });
+
+  if (!drewSprite) {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = invulnerable ? character.color : "#0f172a";
+    ctx.lineWidth = 2;
+
+    if (character.id === "stormcaller") {
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const angle = t + (Math.PI * 2 * i) / 4;
+        const r = player.size * 0.62;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#67e8f9";
+      ctx.beginPath();
+      ctx.arc(cx, cy, player.size * 0.72, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (character.id === "voidblade") {
+      ctx.beginPath();
+      ctx.moveTo(cx, player.y - 2);
+      ctx.lineTo(player.x + player.size + 3, cy);
+      ctx.lineTo(cx, player.y + player.size + 2);
+      ctx.lineTo(player.x - 3, cy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#c4b5fd";
+      ctx.beginPath();
+      ctx.moveTo(player.x + 4, player.y + player.size - 4);
+      ctx.lineTo(player.x + player.size - 4, player.y + 4);
+      ctx.stroke();
+    } else if (character.id === "alchemist") {
+      ctx.beginPath();
+      ctx.arc(cx, cy, player.size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#bef264";
+      ctx.fillRect(cx - 5, player.y - 5, 10, 10);
+      ctx.strokeRect(cx - 5, player.y - 5, 10, 10);
+    } else if (character.id === "engineer") {
+      ctx.fillRect(player.x, player.y + 4, player.size, player.size - 4);
+      ctx.strokeRect(player.x, player.y + 4, player.size, player.size - 4);
+      ctx.fillStyle = "#fdba74";
+      ctx.fillRect(player.x + 6, player.y - 2, player.size - 12, 8);
+      ctx.strokeRect(player.x + 6, player.y - 2, player.size - 12, 8);
+    } else {
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+      ctx.strokeRect(player.x, player.y, player.size, player.size);
+      ctx.fillStyle = "#facc15";
+      ctx.fillRect(player.x + player.size - 4, cy - 3, 10, 6);
+    }
+  }
 
   if (player.charge) {
-    const chargePct = Math.min(1, (performance.now() - player.charge.startedAt) / 1400);
+    const chargePct = Math.min(1, (now - player.charge.startedAt) / 1400);
     ctx.strokeStyle = "#facc15";
     ctx.lineWidth = 3;
     ctx.beginPath();

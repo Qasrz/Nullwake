@@ -55,5 +55,5 @@ function getStageEnemyCount(stage = currentLevel) {
 
 function getStageSpawnInterval(stage = currentLevel) {
   const baseInterval = Math.max(500, 2000 - (stage * 100));
-  return Math.max(260, baseInterval * getDifficultyDef().spawnInterval);
+  return Math.max(260, baseInterval * getDifficultyDef().spawnInterval * getArtifactSpawnIntervalMultiplier());
 }

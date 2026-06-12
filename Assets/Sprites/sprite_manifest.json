@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "generatedBy": "Tools/generate_sprite_sheets.js",
+  "sheets": {
+    "characters": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": {
+        "idle": 0,
+        "move": 1,
+        "attack": 2,
+        "ability": 3
+      },
+      "files": {
+        "gunner": "Assets/Sprites/Characters/gunner.png",
+        "stormcaller": "Assets/Sprites/Characters/stormcaller.png",
+        "voidblade": "Assets/Sprites/Characters/voidblade.png",
+        "alchemist": "Assets/Sprites/Characters/alchemist.png",
+        "engineer": "Assets/Sprites/Characters/engineer.png"
+      }
+    },
+    "enemies": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": {
+        "idle": 0,
+        "move": 1,
+        "attack": 2
+      },
+      "files": {
+        "elites": "Assets/Sprites/Enemies/elites.png",
+        "melee": "Assets/Sprites/Enemies/melee.png",
+        "shooter": "Assets/Sprites/Enemies/shooter.png",
+        "mage": "Assets/Sprites/Enemies/mage.png",
+        "lazer": "Assets/Sprites/Enemies/lazer.png"
+      }
+    },
+    "bosses": {
+      "frameWidth": 96,
+      "frameHeight": 96,
+      "columns": 4,
+      "rows": {
+        "idle": 0,
+        "phase": 1,
+        "attack": 2
+      },
+      "files": {
+        "prismWarden": "Assets/Sprites/Bosses/prism-warden.png",
+        "ashenChoir": "Assets/Sprites/Bosses/ashen-choir.png",
+        "nullSeraph": "Assets/Sprites/Bosses/null-seraph.png"
+      }
+    },
+    "effects": {
+      "projectiles": {
+        "frameWidth": 16,
+        "frameHeight": 16,
+        "columns": 4,
+        "rows": 4,
+        "file": "Assets/Sprites/Effects/projectiles.png"
+      },
+      "explosions": {
+        "frameWidth": 32,
+        "frameHeight": 32,
+        "columns": 6,
+        "rows": 1,
+        "file": "Assets/Sprites/Effects/explosions.png"
+      }
+    }
+  }
+}

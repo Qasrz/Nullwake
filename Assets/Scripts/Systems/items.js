@@ -18,7 +18,7 @@ function hasItemPrerequisites(item) {
 
 function getItemCost(item) {
   const stack = getItemStack(item.id);
-  return Math.floor(item.baseCost * Math.pow(1.35, stack));
+  return Math.floor(item.baseCost * Math.pow(1.35, stack) * getArtifactShopCostMultiplier());
 }
 
 function getPlayerDamageMultiplier() {
@@ -31,7 +31,7 @@ function getPlayerDamageMultiplier() {
     ? 1 + Math.min(0.30 * goldStacks, Math.floor(playerGold / 10) * 0.01 * goldStacks)
     : 1;
 
-  return levelBonus * itemBonus * goldBonus * (character.damageMultiplier || 1);
+  return levelBonus * itemBonus * goldBonus * (character.damageMultiplier || 1) * getArtifactDamageMultiplier();
 }
 
 function getXpGainMultiplier() {
@@ -48,7 +48,7 @@ function getCritDamageMultiplier() {
 }
 
 function getAbilityCooldownMultiplier() {
-  return Math.pow(0.9, getItemStack("cooldown"));
+  return Math.pow(0.9, getItemStack("cooldown")) * getArtifactAbilityCooldownMultiplier();
 }
 
 function getAttackSpeedMultiplier() {
@@ -82,7 +82,7 @@ function getXpNeededForLevel(level) {
 
 function getPlayerMaxHealthForLevel(level = player ? player.level : 1) {
   const levelHealth = Math.floor(PLAYER_MAX_HEALTH * (1 + (level - 1) * PLAYER_HEALTH_PER_LEVEL));
-  return levelHealth + getItemStack("vitality") * 25;
+  return Math.max(1, Math.floor((levelHealth + getItemStack("vitality") * 25) * getArtifactHealthMultiplier()));
 }
 
 function syncPlayerMaxHealth(healByIncrease = false) {

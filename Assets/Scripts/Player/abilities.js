@@ -33,6 +33,7 @@ function isAbilityReady(slot, timestamp = performance.now()) {
 function markAbilityUsed(slot, timestamp = performance.now()) {
   if (!player.abilities[slot]) player.abilities[slot] = { lastUsed: -Infinity };
   player.abilities[slot].lastUsed = timestamp;
+  noteAbilityUsed();
 }
 
 function beginAbilityCharge(slot, timestamp = performance.now()) {
@@ -63,6 +64,7 @@ function useAbility(slot, targetX = mouseX, targetY = mouseY, timestamp = perfor
   else if (characterId === "stormcaller") useStormcallerAbility(slot, targetX, targetY, heldMs);
   else if (characterId === "voidblade") useVoidbladeAbility(slot, targetX, targetY, heldMs);
   else if (characterId === "alchemist") useAlchemistAbility(slot, targetX, targetY, heldMs);
+  else if (characterId === "engineer") useEngineerAbility(slot, targetX, targetY, heldMs);
 
   markAbilityUsed(slot, timestamp);
   updateAbilityHud(timestamp);
@@ -153,6 +155,24 @@ function pullEnemiesToward(x, y, radius, strength) {
       clampEnemyToCanvas(enemy);
     }
   }
+}
+
+function findNearestEnemy(x, y, range = Infinity, excludeIds = []) {
+  let nearest = null;
+  let nearestDist = range;
+
+  for (const enemy of enemies) {
+    if (enemy.dead || excludeIds.includes(enemy.id)) continue;
+    const ex = enemy.x + enemy.size / 2;
+    const ey = enemy.y + enemy.size / 2;
+    const dist = Math.hypot(ex - x, ey - y);
+    if (dist < nearestDist) {
+      nearest = enemy;
+      nearestDist = dist;
+    }
+  }
+
+  return nearest;
 }
 
 function throwGrenade(targetX, targetY, multiplier = 4.0, radius = 78) {
@@ -295,29 +315,12 @@ function useVoidbladeAbility(slot, targetX, targetY, heldMs) {
 
 function useAlchemistAbility(slot, targetX, targetY, heldMs) {
   if (slot === "right") {
-    const damageRoll = rollDamage(LASER_DAMAGE, 2.35, true);
-    const center = getPlayerCenter();
-    const distance = Math.min(430, Math.hypot(targetX - center.x, targetY - center.y));
-    firePlayerProjectile(targetX, targetY, {
-      origin: center,
-      kind: "flask",
-      damage: 0,
-      radius: 7,
-      speed: 5.8,
-      maxDistance: Math.max(70, distance),
-      explodeOnExpire: true,
-      explodesOnHit: true,
-      explosionDamage: damageRoll.damage,
-      explosionRadius: 68,
-      zoneOnDetonate: {
-        radius: 74,
-        damagePerTick: damageRoll.damage * 0.16,
-        duration: 3600,
-        color: "rgba(52, 211, 153, 0.24)"
-      },
-      color: "#bef264",
-      useItemModifiers: false
+    const damageRoll = rollDamage(LASER_DAMAGE, 1.7, true);
+    createPlayerExplosion(targetX, targetY, 54, damageRoll.damage * 0.45, {
+      color: "rgba(190, 242, 100, 0.35)",
+      createFuseOil: false
     });
+    createPlayerDamageZone(targetX, targetY, 92, damageRoll.damage * 0.22, 4300, 480, "rgba(190, 242, 100, 0.27)");
   } else if (slot === "shift") {
     healPlayer(22);
     player.buffs.speedMultiplier = 1.45;
@@ -342,6 +345,205 @@ function useAlchemistAbility(slot, targetX, targetY, heldMs) {
       };
       lastProjectile.explosionDamage = damageRoll.damage;
     }
+  }
+}
+
+function deployTurret(targetX, targetY) {
+  const center = getPlayerCenter();
+  const dx = targetX - center.x;
+  const dy = targetY - center.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const placeDistance = Math.min(180, dist);
+  const x = clamp(center.x + (dx / dist) * placeDistance, 30, WIDTH - 30);
+  const y = clamp(center.y + (dy / dist) * placeDistance, 30, HEIGHT - 30);
+
+  turrets.push({
+    x,
+    y,
+    radius: 14,
+    range: 360,
+    fireInterval: 520,
+    nextFireAt: performance.now() + 250,
+    endsAt: performance.now() + 22000,
+    color: "#f97316"
+  });
+
+  if (turrets.length > 2) turrets.shift();
+  burstParticles(x, y, "#fdba74", 14, 2.8);
+}
+
+function launchEngineerMissiles(targetX, targetY, heldMs) {
+  const center = getPlayerCenter();
+  const count = clamp(2 + Math.floor(heldMs / 360), 2, 8);
+  const usedTargets = [];
+
+  for (let i = 0; i < count; i++) {
+    const target = findNearestEnemy(targetX, targetY, 620, usedTargets);
+    if (target) usedTargets.push(target.id);
+    const angle = -Math.PI / 2 + (i - (count - 1) / 2) * 0.16;
+    const damageRoll = rollDamage(LASER_DAMAGE, 1.15, true);
+
+    missiles.push({
+      x: center.x,
+      y: center.y,
+      vx: Math.cos(angle) * 3.8,
+      vy: Math.sin(angle) * 3.8,
+      radius: 6,
+      targetId: target ? target.id : null,
+      damage: damageRoll.damage,
+      color: damageRoll.isCrit ? "#fb7185" : "#fdba74",
+      createdAt: performance.now(),
+      endsAt: performance.now() + 3600,
+      turnRate: 0.075
+    });
+  }
+
+  addScreenShake(4, 180);
+}
+
+function useEngineerAbility(slot, targetX, targetY, heldMs) {
+  if (slot === "right") {
+    deployTurret(targetX, targetY);
+  } else if (slot === "shift") {
+    launchEngineerMissiles(targetX, targetY, heldMs);
+  } else if (slot === "q") {
+    const damageRoll = rollDamage(LASER_DAMAGE, 1.2, true);
+    createPlayerDamageZone(targetX, targetY, 92, damageRoll.damage * 0.45, 4600, 650, "rgba(251, 146, 60, 0.24)");
+    visualEffects.push({
+      type: "ring",
+      x: targetX,
+      y: targetY,
+      radius: 92,
+      color: "rgba(253, 186, 116, 0.52)",
+      createdAt: performance.now(),
+      endsAt: performance.now() + 4600
+    });
+  } else if (slot === "e") {
+    player.invulnerableUntil = Math.max(player.invulnerableUntil, performance.now() + 1200);
+    healPlayer(12);
+    const center = getPlayerCenter();
+    createPlayerExplosion(center.x, center.y, 92, LASER_DAMAGE * getPlayerDamageMultiplier(), {
+      color: "rgba(253, 186, 116, 0.36)",
+      createFuseOil: false
+    });
+  }
+}
+
+function updateTurretsAndMissiles(delta, timestamp) {
+  const remainingTurrets = [];
+
+  for (const turret of turrets) {
+    if (timestamp > turret.endsAt) continue;
+    if (timestamp >= turret.nextFireAt) {
+      const target = findNearestEnemy(turret.x, turret.y, turret.range);
+      if (target) {
+        firePlayerProjectile(target.x + target.size / 2, target.y + target.size / 2, {
+          origin: { x: turret.x, y: turret.y },
+          kind: "rivet",
+          baseDamage: LASER_DAMAGE,
+          damageMultiplier: 0.55,
+          radius: 4,
+          speed: LASER_SPEED * 1.08,
+          color: "#fdba74"
+        });
+        turret.nextFireAt = timestamp + turret.fireInterval;
+      } else {
+        turret.nextFireAt = timestamp + 180;
+      }
+    }
+    remainingTurrets.push(turret);
+  }
+
+  turrets = remainingTurrets;
+
+  const step = delta / 16;
+  const remainingMissiles = [];
+  for (const missile of missiles) {
+    if (timestamp > missile.endsAt) continue;
+    let target = enemies.find(enemy => enemy.id === missile.targetId && !enemy.dead);
+    if (!target) target = findNearestEnemy(missile.x, missile.y, 620);
+    if (target) missile.targetId = target.id;
+
+    if (target) {
+      const tx = target.x + target.size / 2;
+      const ty = target.y + target.size / 2;
+      const targetAngle = Math.atan2(ty - missile.y, tx - missile.x);
+      const currentAngle = Math.atan2(missile.vy, missile.vx);
+      let diff = targetAngle - currentAngle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const nextAngle = currentAngle + clamp(diff, -missile.turnRate, missile.turnRate);
+      const speed = Math.min(9.5, Math.hypot(missile.vx, missile.vy) + 0.18);
+      missile.vx = Math.cos(nextAngle) * speed;
+      missile.vy = Math.sin(nextAngle) * speed;
+    }
+
+    missile.x += missile.vx * step;
+    missile.y += missile.vy * step;
+
+    let hit = false;
+    for (const enemy of enemies) {
+      if (enemy.dead) continue;
+      const ex = enemy.x + enemy.size / 2;
+      const ey = enemy.y + enemy.size / 2;
+      if (circlesOverlap(missile.x, missile.y, missile.radius, ex, ey, enemy.size / 2)) {
+        createPlayerExplosion(missile.x, missile.y, 42, missile.damage, {
+          color: "rgba(253, 186, 116, 0.38)",
+          createFuseOil: false
+        });
+        hit = true;
+        break;
+      }
+    }
+
+    if (!hit) remainingMissiles.push(missile);
+  }
+
+  missiles = remainingMissiles;
+}
+
+function drawTurretsAndMissiles(timestamp) {
+  for (const turret of turrets) {
+    const pulse = 0.75 + Math.sin(timestamp * 0.008) * 0.12;
+    const drewTurret = drawProjectileSprite({ x: turret.x, y: turret.y, kind: "turret" }, 34, {
+      shadowColor: turret.color,
+      shadowBlur: 10
+    });
+    if (!drewTurret) {
+      ctx.fillStyle = "#7c2d12";
+      ctx.fillRect(turret.x - 13, turret.y - 10, 26, 20);
+      ctx.fillStyle = turret.color;
+      ctx.fillRect(turret.x - 7, turret.y - 16, 14, 12);
+    }
+    ctx.strokeStyle = `rgba(253, 186, 116, ${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(turret.x, turret.y, turret.radius + 4, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  for (const missile of missiles) {
+    const angle = Math.atan2(missile.vy, missile.vx);
+    if (drawProjectileSprite({ ...missile, kind: "missile" }, Math.max(20, missile.radius * 4), {
+      angle,
+      shadowColor: missile.color,
+      shadowBlur: 8
+    })) {
+      continue;
+    }
+
+    ctx.save();
+    ctx.translate(missile.x, missile.y);
+    ctx.rotate(angle);
+    ctx.fillStyle = missile.color;
+    ctx.beginPath();
+    ctx.moveTo(missile.radius * 1.9, 0);
+    ctx.lineTo(-missile.radius, -missile.radius * 0.8);
+    ctx.lineTo(-missile.radius * 0.5, 0);
+    ctx.lineTo(-missile.radius, missile.radius * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 }
 

@@ -42,6 +42,11 @@
           <h3>Alchemist</h3>
           <p>Flasks, healing tonics, and corrosive zones.</p>
         </div>
+        <div class="char-card" data-character="engineer">
+          <div class="char-icon" style="background: #f97316;"></div>
+          <h3>Engineer</h3>
+          <p>Turrets, lock-on missiles, and field hardware.</p>
+        </div>
       </div>
       <h2 class="menu-subtitle">Select Difficulty</h2>
       <div class="difficulty-grid">
@@ -62,6 +67,8 @@
           <p>Stronger enemies, faster waves, no stage healing.</p>
         </div>
       </div>
+      <h2 class="menu-subtitle">Artifacts</h2>
+      <div id="artifact-grid" class="artifact-grid"></div>
       <div class="menu-actions">
         <button id="btn-back-char" class="btn secondary">Back</button>
         <button id="btn-start" class="btn">Enter Dungeon</button>
@@ -149,7 +156,9 @@
   
   <script src="Assets/Scripts/Systems/constants.js"></script>
   <script src="Assets/Scripts/Systems/utils.js"></script>
+  <script src="Assets/Scripts/Systems/sprites.js"></script>
   <script src="Assets/Scripts/Systems/presentation.js"></script>
+  <script src="Assets/Scripts/Systems/artifacts.js"></script>
   <script src="Assets/Scripts/Systems/items.js"></script>
   <script src="Assets/Scripts/Player/player.js"></script>
   <script src="Assets/Scripts/Bosses/bosses.js"></script>

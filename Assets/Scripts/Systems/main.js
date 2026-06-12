@@ -20,6 +20,19 @@ function initializeCharacterSelect() {
       card.classList.add("active-difficulty");
     });
   });
+
+  decorateCharacterCards();
+  renderArtifactGrid();
+}
+
+function decorateCharacterCards() {
+  document.querySelectorAll("[data-character]").forEach(card => {
+    const id = card.dataset.character;
+    const icon = card.querySelector(".char-icon");
+    if (!id || !icon) return;
+
+    icon.style.backgroundImage = `url("Assets/Sprites/Characters/${id}.png")`;
+  });
 }
 
 // Menu Button Event Listeners
@@ -54,9 +67,12 @@ function resetLevel(level = 1) {
 
   if (!player || level === 1) {
     player = createNewPlayer();
-    playerGold = 0;
+    syncPlayerMaxHealth(false);
+    player.health = player.maxHealth;
+    playerGold = isArtifactActive("goldRush") ? 60 : 0;
     nextEnemyId = 1;
     runStartTime = now;
+    runStats = createRunStats();
   } else {
     player.x = WIDTH / 2 - PLAYER_SIZE / 2;
     player.y = HEIGHT / 2 - PLAYER_SIZE / 2;
@@ -74,6 +90,8 @@ function resetLevel(level = 1) {
   visualEffects = [];
   particles = [];
   floatingTexts = [];
+  turrets = [];
+  missiles = [];
   goldDrops = [];
   portal = null;
   activeArena = null;
@@ -120,7 +138,10 @@ function updateDOMHud() {
 }
 
 function collectRemainingGoldDrops() {
-  for (const gold of goldDrops) playerGold += gold.value;
+  for (const gold of goldDrops) {
+    playerGold += gold.value;
+    noteGoldCollected(gold.value);
+  }
   goldDrops = [];
 }
 
@@ -151,6 +172,7 @@ function checkLevelComplete() {
   const enemyCount = getStageEnemyCount(currentLevel);
 
   if (gameState === "playing" && enemiesSpawned >= enemyCount && enemies.length === 0) {
+    noteStageCleared();
     applyDifficultyRegen(isBossLevel);
     collectRemainingGoldDrops();
     enemyProjectiles = [];
@@ -228,6 +250,9 @@ function draw(timestamp) {
       const prevY = player.y;
 
       updatePlayer();
+      if (isPrimaryFireHeld && isArtifactActive("fullAuto")) {
+        fireLaser(mouseX, mouseY, timestamp);
+      }
 
       if (delta > 0) {
         player.vx = (player.x - prevX) / delta;
@@ -238,6 +263,7 @@ function draw(timestamp) {
       }
 
       updatePlayerProjectiles(delta, timestamp);
+      updateTurretsAndMissiles(delta, timestamp);
       moveProjectiles(enemyProjectiles, delta);
       moveHazards(hazards, timestamp);
       
@@ -289,6 +315,7 @@ function draw(timestamp) {
     drawPortal();
     drawGold();
     drawParticles(timestamp);
+    drawTurretsAndMissiles(timestamp);
     drawEnemies();
     drawEnemyProjectiles();
     drawLasers();
@@ -313,9 +340,16 @@ canvas.addEventListener("mousedown", (event) => {
   mouseY = event.clientY;
 
   if (gameState === "playing" || gameState === "portalPhase") {
-    if (event.button === 0) fireLaser(event.clientX, event.clientY, performance.now());
+    if (event.button === 0) {
+      isPrimaryFireHeld = true;
+      fireLaser(event.clientX, event.clientY, performance.now());
+    }
     if (event.button === 2) useAbility("right", event.clientX, event.clientY, performance.now());
   }
+});
+
+window.addEventListener("mouseup", (event) => {
+  if (event.button === 0) isPrimaryFireHeld = false;
 });
 
 window.addEventListener("keydown", (event) => {
@@ -335,7 +369,9 @@ window.addEventListener("keydown", (event) => {
 
   if (gameState === "playing" && !event.repeat) {
     if (key === "shift") {
-      useAbility("shift", mouseX, mouseY, performance.now());
+      const ability = getAbilityDef("shift");
+      if (ability && ability.hold) beginAbilityCharge("shift", performance.now());
+      else useAbility("shift", mouseX, mouseY, performance.now());
       event.preventDefault();
     } else if (key === "q") {
       useAbility("q", mouseX, mouseY, performance.now());
@@ -356,6 +392,9 @@ window.addEventListener("keyup", (event) => {
 
   if (key === "e") {
     releaseAbilityCharge("e", performance.now());
+    event.preventDefault();
+  } else if (key === "shift") {
+    releaseAbilityCharge("shift", performance.now());
     event.preventDefault();
   }
 });

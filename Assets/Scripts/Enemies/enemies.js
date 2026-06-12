@@ -65,7 +65,7 @@ function getEnemyXpReward(enemy) {
 
 function getEnemyGoldReward(enemy) {
   if (enemy.type === 'boss') return 120 + enemy.level * 10;
-  return Math.floor((4 + enemy.level * 2) * (enemy.elite ? 2.25 : 1));
+  return Math.floor((4 + enemy.level * 2) * (enemy.elite ? 2.25 : 1) * getArtifactGoldRewardMultiplier(enemy));
 }
 
 function randomSpawnPosition() {
@@ -139,7 +139,7 @@ function spawnEnemy(timestamp, forceBoss = false) {
 }
 
 function maybeApplyElite(enemy) {
-  const eliteChance = clamp((0.08 + currentLevel * 0.012) * getDifficultyDef().eliteChance, 0, 0.38);
+  const eliteChance = clamp((0.08 + currentLevel * 0.012) * getDifficultyDef().eliteChance * getArtifactEliteChanceMultiplier(), 0, 0.55);
   if (currentLevel < 3 || Math.random() > eliteChance) return;
 
   const elite = ELITE_DEFS[Math.floor(Math.random() * ELITE_DEFS.length)];
@@ -186,6 +186,7 @@ function clampEnemyToCanvas(enemy) {
 function startMeleeDash(enemy, dx, dy, dist, timestamp) {
   if (dist <= 0) return;
   enemy.isDashing = true;
+  enemy.lastAttackAt = timestamp;
   enemy.dashEndsAt = timestamp + MELEE_DASH_DURATION_MS;
   enemy.dashVx = (dx / dist) * MELEE_DASH_SPEED * (enemy.elite ? 1.08 : 1);
   enemy.dashVy = (dy / dist) * MELEE_DASH_SPEED * (enemy.elite ? 1.08 : 1);
@@ -257,16 +258,19 @@ function handleEnemyCombat(enemy, center, timestamp) {
   if (enemy.type === 'shooter') {
     if (enemy.elite) fireEliteShooterPlus(enemy);
     else fireEnemyProjectile(enemy, false);
+    enemy.lastAttackAt = timestamp;
     enemy.lastFire = timestamp;
   } else if (enemy.type === 'mage') {
     if (enemy.elite) {
       fireEliteMageBurst(enemy, center, timestamp);
     } else if (Math.random() > 0.5) fireEnemyProjectile(enemy, true);
     else createLightning(center.x, center.y, timestamp, enemy.damage);
+    enemy.lastAttackAt = timestamp;
     enemy.lastFire = timestamp;
   } else if (enemy.type === 'lazer') {
     if (enemy.elite) createTwinLazerBeamHazard(enemy, center, timestamp);
     else createLazerBeamHazard(enemy, center, timestamp);
+    enemy.lastAttackAt = timestamp;
     enemy.lastFire = timestamp;
   }
 }
@@ -330,8 +334,19 @@ function drawEnemies() {
 function drawStandardEnemy(enemy) {
   const cx = enemy.x + enemy.size / 2;
   const cy = enemy.y + enemy.size / 2;
+  const now = performance.now();
+  const attackFrame = enemy.isDashing || now - (enemy.lastAttackAt || -Infinity) < 420;
+  const spriteRow = attackFrame ? "attack" : "move";
 
   if (enemy.elite) {
+    drawSpriteCentered("enemies", "elites", cx, cy, enemy.size * 2.15, enemy.elite, {
+      timestamp: now,
+      fps: 6,
+      seed: enemy.id,
+      alpha: 0.75,
+      shadowColor: enemy.color,
+      shadowBlur: 12
+    });
     ctx.strokeStyle = enemy.color;
     ctx.globalAlpha = 0.45;
     ctx.lineWidth = 4;
@@ -341,22 +356,32 @@ function drawStandardEnemy(enemy) {
     ctx.globalAlpha = 1;
   }
 
-  ctx.fillStyle = enemy.color;
-  ctx.beginPath();
-  if (enemy.type === "melee") {
-    ctx.moveTo(cx, enemy.y);
-    ctx.lineTo(enemy.x + enemy.size, enemy.y + enemy.size);
-    ctx.lineTo(enemy.x, enemy.y + enemy.size);
-    ctx.closePath();
-  } else if (enemy.type === "lazer") {
-    ctx.rect(enemy.x, enemy.y + enemy.size * 0.18, enemy.size, enemy.size * 0.64);
-  } else {
-    ctx.arc(cx, cy, enemy.size / 2, 0, Math.PI * 2);
+  const drewSprite = drawSpriteCentered("enemies", enemy.type, cx, cy, enemy.size * 1.85, spriteRow, {
+    timestamp: now,
+    fps: attackFrame ? 12 : 7,
+    seed: enemy.id,
+    shadowColor: enemy.elite ? enemy.color : "rgba(0, 0, 0, 0.7)",
+    shadowBlur: enemy.elite ? 10 : 4
+  });
+
+  if (!drewSprite) {
+    ctx.fillStyle = enemy.color;
+    ctx.beginPath();
+    if (enemy.type === "melee") {
+      ctx.moveTo(cx, enemy.y);
+      ctx.lineTo(enemy.x + enemy.size, enemy.y + enemy.size);
+      ctx.lineTo(enemy.x, enemy.y + enemy.size);
+      ctx.closePath();
+    } else if (enemy.type === "lazer") {
+      ctx.rect(enemy.x, enemy.y + enemy.size * 0.18, enemy.size, enemy.size * 0.64);
+    } else {
+      ctx.arc(cx, cy, enemy.size / 2, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
-  ctx.fill();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1;
-  ctx.stroke();
 
   const barWidth = enemy.size;
   const barHeight = 4;
@@ -373,7 +398,8 @@ function drawStandardEnemy(enemy) {
 function drawBossEnemy(enemy) {
   const cx = enemy.x + enemy.size / 2;
   const cy = enemy.y + enemy.size / 2;
-  const t = performance.now() * 0.002;
+  const now = performance.now();
+  const t = now * 0.002;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -392,6 +418,21 @@ function drawBossEnemy(enemy) {
   ctx.closePath();
   ctx.stroke();
   ctx.restore();
+
+  const spriteRow = now - (enemy.lastPatternAt || -Infinity) < 620
+    ? "attack"
+    : now - (enemy.phaseChangedAt || -Infinity) < 900 || enemy.phase >= 3
+      ? "phase"
+      : "idle";
+  const drewSprite = drawSpriteCentered("bosses", enemy.bossId, cx, cy, enemy.size * 2.45, spriteRow, {
+    timestamp: now,
+    fps: spriteRow === "attack" ? 7 : 4,
+    seed: enemy.phase || 1,
+    shadowColor: enemy.accent || enemy.color,
+    shadowBlur: 18
+  });
+
+  if (drewSprite) return;
 
   ctx.fillStyle = enemy.color;
   ctx.beginPath();

@@ -16,6 +16,7 @@ const uiLevelText = document.getElementById("level-text");
 const uiStageText = document.getElementById("stage-text");
 const uiStatsText = document.getElementById("stats-text");
 const uiAbilityBar = document.getElementById("ability-bar");
+const uiArtifactGrid = document.getElementById("artifact-grid");
 const uiRunClock = document.getElementById("run-clock");
 const uiDifficultyText = document.getElementById("difficulty-text");
 const uiDifficultyDetail = document.getElementById("difficulty-detail");
@@ -109,6 +110,7 @@ const CHARACTER_DEFS = {
     desc: "Reliable shots, explosives, and charged precision.",
     speedMultiplier: 1,
     damageMultiplier: 1,
+    primary: { name: "Ballistic Rifle", cooldown: 280 },
     abilities: {
       right: { label: "RMB", name: "Grenade", cooldown: 5200 },
       shift: { label: "Shift", name: "Combat Slide", cooldown: 4300 },
@@ -124,10 +126,11 @@ const CHARACTER_DEFS = {
     desc: "Chains lightning through packs and blinks through danger.",
     speedMultiplier: 1.03,
     damageMultiplier: 0.92,
+    primary: { name: "Static Bolt", cooldown: 360 },
     abilities: {
       right: { label: "RMB", name: "Arc Orb", cooldown: 4700 },
       shift: { label: "Shift", name: "Blink", cooldown: 5600 },
-      q: { label: "Q", name: "Thunder Ring", cooldown: 7000 },
+      q: { label: "Q", name: "Storm Rod", cooldown: 7000 },
       e: { label: "E", name: "Tempest Spear", cooldown: 7600, hold: true }
     }
   },
@@ -139,8 +142,9 @@ const CHARACTER_DEFS = {
     desc: "Fast dashes, blade fans, and gravity cuts.",
     speedMultiplier: 1.12,
     damageMultiplier: 0.86,
+    primary: { name: "Void Slash", cooldown: 330 },
     abilities: {
-      right: { label: "RMB", name: "Rift Chakram", cooldown: 4200 },
+      right: { label: "RMB", name: "Rift Hook", cooldown: 4200 },
       shift: { label: "Shift", name: "Phase Step", cooldown: 5200 },
       q: { label: "Q", name: "Blade Bloom", cooldown: 6100 },
       e: { label: "E", name: "Singularity Cut", cooldown: 8200, hold: true }
@@ -154,14 +158,69 @@ const CHARACTER_DEFS = {
     desc: "Area denial, healing tonics, and volatile flasks.",
     speedMultiplier: 0.96,
     damageMultiplier: 1.02,
+    primary: { name: "Volatile Flask", cooldown: 520 },
     abilities: {
-      right: { label: "RMB", name: "Acid Flask", cooldown: 4400 },
+      right: { label: "RMB", name: "Transmute Pool", cooldown: 5000 },
       shift: { label: "Shift", name: "Tonic Rush", cooldown: 7800 },
       q: { label: "Q", name: "Catalyst Cloud", cooldown: 6500 },
       e: { label: "E", name: "Pressure Cask", cooldown: 8600, hold: true }
     }
+  },
+  engineer: {
+    id: "engineer",
+    name: "Engineer",
+    color: "#f97316",
+    projectileColor: "#fdba74",
+    desc: "Builds turrets, paints targets, and launches smart ordnance.",
+    speedMultiplier: 0.94,
+    damageMultiplier: 1.04,
+    primary: { name: "Rivet Driver", cooldown: 320 },
+    abilities: {
+      right: { label: "RMB", name: "Deploy Turret", cooldown: 9000 },
+      shift: { label: "Shift", name: "Missile Lock", cooldown: 6800, hold: true },
+      q: { label: "Q", name: "Shock Pylon", cooldown: 7200 },
+      e: { label: "E", name: "Scrap Bulwark", cooldown: 9600 }
+    }
   }
 };
+
+const ARTIFACT_DEFS = [
+  {
+    id: "fullAuto",
+    name: "Artifact of Triggerflow",
+    desc: "Holding left click continuously fires your primary at full speed.",
+    hint: "Defeat the first boss on Expert.",
+    color: "#38bdf8"
+  },
+  {
+    id: "glassHeart",
+    name: "Artifact of Glass Hearts",
+    desc: "Max health is halved, but all damage is doubled.",
+    hint: "Clear five stages in one run without taking damage.",
+    color: "#fb7185"
+  },
+  {
+    id: "overclock",
+    name: "Artifact of Overclocking",
+    desc: "Abilities recharge 25% faster, but enemies spawn 15% faster.",
+    hint: "Use 30 abilities in one run.",
+    color: "#facc15"
+  },
+  {
+    id: "goldRush",
+    name: "Artifact of the Golden Engine",
+    desc: "Start with 60 gold, but shop prices are 20% higher.",
+    hint: "Collect 300 gold in one run.",
+    color: "#fde047"
+  },
+  {
+    id: "elitePact",
+    name: "Artifact of Crowned Foes",
+    desc: "Elites appear much more often and drop extra gold.",
+    hint: "Kill 15 elites in one run.",
+    color: "#a78bfa"
+  }
+];
 
 // Risk-of-Rain-style stackable items plus a few build-around synergies.
 const SHOP_ITEMS = [
@@ -272,7 +331,13 @@ let gameState = "menu";
 let animationId;
 let selectedCharacterId = "gunner";
 let selectedDifficultyId = "hard";
+let unlockedArtifactIds = [];
+let selectedArtifactIds = [];
 let currentShopChoices = [];
 let mouseX = WIDTH / 2;
 let mouseY = HEIGHT / 2;
+let isPrimaryFireHeld = false;
 let nextEnemyId = 1;
+let turrets = [];
+let missiles = [];
+let runStats = null;

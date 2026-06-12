@@ -1,17 +1,81 @@
 function fireLaser(targetX, targetY, timestamp = performance.now()) {
   if (gameState !== "playing" && gameState !== "portalPhase") return;
 
-  const currentCooldown = LASER_FIRE_INTERVAL_MS / getAttackSpeedMultiplier();
+  const character = getSelectedCharacterDef();
+  const primaryCooldown = character.primary ? character.primary.cooldown : LASER_FIRE_INTERVAL_MS;
+  const currentCooldown = primaryCooldown / getAttackSpeedMultiplier();
   if (timestamp - player.lastLaserFire < currentCooldown) return;
 
   player.lastLaserFire = timestamp;
-  firePlayerProjectile(targetX, targetY, {
-    kind: "basic",
-    baseDamage: LASER_DAMAGE,
-    radius: LASER_RADIUS,
-    speed: LASER_SPEED,
-    color: getSelectedCharacterDef().projectileColor
-  });
+  firePrimaryAttack(character.id, targetX, targetY, timestamp);
+}
+
+function firePrimaryAttack(characterId, targetX, targetY, timestamp = performance.now()) {
+  if (characterId === "alchemist") {
+    const center = getPlayerCenter();
+    const distance = Math.min(390, Math.hypot(targetX - center.x, targetY - center.y));
+    const damageRoll = rollDamage(LASER_DAMAGE, 1.05, true);
+    firePlayerProjectile(targetX, targetY, {
+      origin: center,
+      kind: "flask",
+      damage: damageRoll.damage * 0.25,
+      radius: 7,
+      speed: 5.7,
+      maxDistance: Math.max(80, distance),
+      explodeOnExpire: true,
+      explodesOnHit: true,
+      explosionDamage: damageRoll.damage,
+      explosionRadius: 48,
+      zoneOnDetonate: {
+        radius: 42,
+        damagePerTick: damageRoll.damage * 0.08,
+        duration: 1700,
+        tickRate: 520,
+        color: "rgba(190, 242, 100, 0.22)"
+      },
+      color: "#bef264"
+    });
+    burstParticles(center.x, center.y, "#bef264", 2, 1.2);
+  } else if (characterId === "stormcaller") {
+    firePlayerProjectile(targetX, targetY, {
+      kind: "spark",
+      baseDamage: LASER_DAMAGE,
+      damageMultiplier: 0.82,
+      radius: 5,
+      speed: LASER_SPEED * 0.95,
+      basePierce: 1,
+      chainLightning: true,
+      color: "#67e8f9"
+    });
+  } else if (characterId === "voidblade") {
+    firePlayerProjectile(targetX, targetY, {
+      kind: "blade",
+      baseDamage: LASER_DAMAGE,
+      damageMultiplier: 1.1,
+      radius: 8,
+      speed: LASER_SPEED * 0.92,
+      basePierce: 1,
+      maxDistance: 430,
+      color: "#c4b5fd"
+    });
+  } else if (characterId === "engineer") {
+    firePlayerProjectile(targetX, targetY, {
+      kind: "rivet",
+      baseDamage: LASER_DAMAGE,
+      damageMultiplier: 0.95,
+      radius: 5,
+      speed: LASER_SPEED * 1.05,
+      color: "#fdba74"
+    });
+  } else {
+    firePlayerProjectile(targetX, targetY, {
+      kind: "basic",
+      baseDamage: LASER_DAMAGE,
+      radius: LASER_RADIUS,
+      speed: LASER_SPEED,
+      color: getSelectedCharacterDef().projectileColor
+    });
+  }
 }
 
 function firePlayerProjectile(targetX, targetY, options = {}) {
@@ -202,6 +266,7 @@ function createPlayerExplosion(x, y, radius, baseDamage, options = {}) {
   const now = performance.now();
   visualEffects.push({
     type: "ring",
+    sprite: "explosion",
     x,
     y,
     radius,
@@ -303,6 +368,7 @@ function dealDamageToEnemy(enemy, amount, info = {}) {
 
 function killEnemy(enemy) {
   if (enemy.dead) return;
+  noteEnemyKilled(enemy);
   enemy.dead = true;
   enemy.health = 0;
 
@@ -826,6 +892,7 @@ function checkGoldPickups(delta) {
 
     if (dist < playerRadius + GOLD_PICKUP_RADIUS) {
       playerGold += gold.value;
+      noteGoldCollected(gold.value);
     } else {
       remainingGold.push(gold);
     }
@@ -835,21 +902,56 @@ function checkGoldPickups(delta) {
 
 function drawLasers() {
   for (const laser of lasers) {
+    const angle = Math.atan2(laser.vy, laser.vx);
+    const spriteSize = Math.max(18, laser.radius * 4.6);
+    if (drawProjectileSprite(laser, spriteSize, {
+      angle,
+      shadowColor: laser.isCrit ? "#fb7185" : laser.color,
+      shadowBlur: laser.isCrit ? 12 : 7
+    })) {
+      continue;
+    }
+
     ctx.fillStyle = laser.isCrit ? "#ef4444" : laser.color || "#facc15";
 
-    if (laser.kind === "charged" || laser.kind === "spear" || laser.kind === "chakram" || laser.kind === "lance") {
-      const angle = Math.atan2(laser.vy, laser.vx);
+    if (laser.kind === "charged" || laser.kind === "spear" || laser.kind === "chakram" || laser.kind === "lance" || laser.kind === "blade" || laser.kind === "rivet") {
       ctx.save();
       ctx.translate(laser.x, laser.y);
       ctx.rotate(angle);
       ctx.beginPath();
-      ctx.moveTo(laser.radius * 2.4, 0);
-      ctx.lineTo(-laser.radius * 1.5, -laser.radius);
-      ctx.lineTo(-laser.radius * 0.7, 0);
-      ctx.lineTo(-laser.radius * 1.5, laser.radius);
+      if (laser.kind === "blade") {
+        ctx.arc(0, 0, laser.radius * 1.4, -Math.PI * 0.62, Math.PI * 0.62);
+        ctx.lineTo(-laser.radius * 1.1, 0);
+      } else if (laser.kind === "rivet") {
+        ctx.rect(-laser.radius * 1.6, -laser.radius * 0.65, laser.radius * 3.2, laser.radius * 1.3);
+      } else {
+        ctx.moveTo(laser.radius * 2.4, 0);
+        ctx.lineTo(-laser.radius * 1.5, -laser.radius);
+        ctx.lineTo(-laser.radius * 0.7, 0);
+        ctx.lineTo(-laser.radius * 1.5, laser.radius);
+      }
       ctx.closePath();
       ctx.fill();
       ctx.restore();
+    } else if (laser.kind === "flask") {
+      ctx.save();
+      ctx.translate(laser.x, laser.y);
+      ctx.rotate(performance.now() * 0.012);
+      ctx.fillRect(-laser.radius * 0.7, -laser.radius, laser.radius * 1.4, laser.radius * 2);
+      ctx.strokeStyle = "#ecfccb";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-laser.radius * 0.7, -laser.radius, laser.radius * 1.4, laser.radius * 2);
+      ctx.restore();
+    } else if (laser.kind === "spark") {
+      ctx.strokeStyle = laser.color || "#67e8f9";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(laser.x - laser.radius * 1.6, laser.y);
+      ctx.lineTo(laser.x, laser.y - laser.radius * 1.2);
+      ctx.lineTo(laser.x + laser.radius * 1.6, laser.y);
+      ctx.lineTo(laser.x, laser.y + laser.radius * 1.2);
+      ctx.closePath();
+      ctx.stroke();
     } else {
       ctx.beginPath();
       ctx.arc(laser.x, laser.y, laser.radius, 0, Math.PI * 2);
@@ -860,6 +962,16 @@ function drawLasers() {
 
 function drawEnemyProjectiles() {
   for (const p of enemyProjectiles) {
+    const kind = p.isFireball ? "fireball" : p.homing ? "homing" : "enemy";
+    const angle = Math.atan2(p.vy, p.vx);
+    if (drawProjectileSprite({ ...p, kind }, Math.max(18, p.radius * 3.8), {
+      angle,
+      shadowColor: p.color || (p.isFireball ? "#f97316" : "#ef4444"),
+      shadowBlur: 7
+    })) {
+      continue;
+    }
+
     ctx.fillStyle = p.color || (p.isFireball ? "#f97316" : "#ef4444");
     ctx.beginPath();
     if (p.homing) {
@@ -982,6 +1094,13 @@ function drawVisualEffects(timestamp) {
       ctx.moveTo(effect.x, effect.y);
       ctx.lineTo(effect.x2, effect.y2);
       ctx.stroke();
+    } else if (effect.sprite === "explosion" && drawExplosionSprite(effect.x, effect.y, effect.radius, effect.createdAt, effect.endsAt, {
+      timestamp,
+      alpha: Math.min(1, lifePct + 0.18),
+      shadowColor: effect.color,
+      shadowBlur: 14
+    })) {
+      // Sprite handled above.
     } else {
       ctx.strokeStyle = effect.color;
       ctx.lineWidth = 4;
