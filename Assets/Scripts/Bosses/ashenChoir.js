@@ -78,14 +78,14 @@ function runAshenChoirPattern(enemy, center, timestamp) {
     }
   } else if (pattern === 1) {
     fireRotatingEdgeCurtain(enemy, timestamp, 11 + enemy.phase * 4, {
-      speed: 2.85 + enemy.phase * 0.26,
+      speed: 2.00 + enemy.phase * 0.26,
       radius: 5,
       damage: enemy.damage * 0.78,
       color: enemy.color,
       tangent: 0.32
     });
   } else if (pattern === 2) {
-    fireEnemyArc(boss.x, boss.y, playerAngle, Math.PI * 0.95, 13 + enemy.phase * 4, {
+    fireEnemyArc(boss.x, boss.y, playerAngle, Math.PI * 0.95, 8 + enemy.phase * 4, {
       speed: 3 + enemy.phase * 0.28,
       radius: 5,
       damage: enemy.damage,
@@ -97,7 +97,7 @@ function runAshenChoirPattern(enemy, center, timestamp) {
       const pos = getPointOnArenaPerimeter(timestamp * 0.00012 + i / summons);
       spawnBossMinion(i % 2 === 0 ? "melee" : "shooter", pos.x, pos.y, enemy.level);
     }
-    fireRotatingEdgeCurtain(enemy, timestamp + 700, 8 + enemy.phase * 3, {
+    fireRotatingEdgeCurtain(enemy, timestamp + 700, 4 + enemy.phase * 3, {
       speed: 2.45,
       radius: 5,
       damage: enemy.damage * 0.72,
