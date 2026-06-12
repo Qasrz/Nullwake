@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roguelike Dodge</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <title>RogueBlock</title>
+  <link rel="stylesheet" href="Assets/style.css">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -12,7 +12,9 @@
   <div id="ui-layer">
     
     <div id="menu-main" class="screen active">
-      <h1 class="game-title">ROGUE DODGE</h1>
+      <div class="title-mark">RIFT RUN 01</div>
+      <h1 class="game-title">ROGUEBLOCK</h1>
+      <p class="game-subtitle">Survive escalating zones, break boss patterns, and build something absurd.</p>
       <button id="btn-play" class="btn">Play</button>
       <button id="btn-settings" class="btn secondary">Settings</button>
     </div>
@@ -20,15 +22,44 @@
     <div id="menu-char-select" class="screen">
       <h2 class="menu-title">Select Class</h2>
       <div class="char-grid">
-        <div class="char-card active-char">
+        <div class="char-card active-char" data-character="gunner">
           <div class="char-icon" style="background: #38bdf8;"></div>
-          <h3>The Survivor</h3>
-          <p>Balanced speed and health.</p>
+          <h3>Gunner</h3>
+          <p>Reliable shots, explosives, and charged precision.</p>
         </div>
-        <div class="char-card locked">
-          <div class="char-icon" style="background: #334155;"></div>
-          <h3>???</h3>
-          <p>Unlock later.</p>
+        <div class="char-card" data-character="stormcaller">
+          <div class="char-icon" style="background: #f59e0b;"></div>
+          <h3>Stormcaller</h3>
+          <p>Lightning chains, blink movement, and charged spears.</p>
+        </div>
+        <div class="char-card" data-character="voidblade">
+          <div class="char-icon" style="background: #a78bfa;"></div>
+          <h3>Voidblade</h3>
+          <p>Phase dashes, blade fans, and gravity cuts.</p>
+        </div>
+        <div class="char-card" data-character="alchemist">
+          <div class="char-icon" style="background: #34d399;"></div>
+          <h3>Alchemist</h3>
+          <p>Flasks, healing tonics, and corrosive zones.</p>
+        </div>
+      </div>
+      <h2 class="menu-subtitle">Select Difficulty</h2>
+      <div class="difficulty-grid">
+        <div class="difficulty-card" data-difficulty="easy">
+          <h3>Easy</h3>
+          <p>Lower enemy stats, slower waves, heal after every stage.</p>
+        </div>
+        <div class="difficulty-card" data-difficulty="medium">
+          <h3>Medium</h3>
+          <p>Gentler scaling and full heals between stages.</p>
+        </div>
+        <div class="difficulty-card active-difficulty" data-difficulty="hard">
+          <h3>Hard</h3>
+          <p>The current baseline. Heal after boss stages only.</p>
+        </div>
+        <div class="difficulty-card" data-difficulty="expert">
+          <h3>Expert</h3>
+          <p>Stronger enemies, faster waves, no stage healing.</p>
         </div>
       </div>
       <div class="menu-actions">
@@ -41,27 +72,71 @@
       <h2 class="menu-title">Settings</h2>
       <div class="settings-box">
         <p><strong>Move:</strong> W, A, S, D</p>
-        <p><strong>Shoot:</strong> Mouse Click</p>
+        <p><strong>Shoot:</strong> Left Click</p>
+        <p><strong>Abilities:</strong> Right Click, Shift, Q, hold E</p>
         <p><strong>Restart:</strong> R (when dead)</p>
       </div>
       <button id="btn-back-settings" class="btn secondary">Back</button>
     </div>
 
     <div id="game-hud" class="screen">
+      <div class="run-top-center">
+        <div id="run-clock" class="run-clock">00:00</div>
+        <div id="difficulty-text" class="difficulty-text">Warming x1.00</div>
+        <div id="difficulty-detail" class="difficulty-text">Hard</div>
+        <div id="objective-text" class="objective-text">Clear the wave</div>
+      </div>
+
+      <div id="boss-frame" class="boss-frame hidden">
+        <div class="boss-row">
+          <div>
+            <div id="boss-name" class="boss-name">Boss</div>
+            <div id="boss-subtitle" class="boss-subtitle"></div>
+          </div>
+          <div id="boss-phase-text" class="boss-phase-text">Phase 1</div>
+        </div>
+        <div class="boss-health">
+          <div id="boss-health-fill" class="boss-health-fill"></div>
+        </div>
+      </div>
+
       <div class="hud-top-left">
         <div class="health-container">
           <div id="health-fill" class="health-fill"></div>
+          <span id="health-text">100 / 100</span>
         </div>
         
-        <div class="xp-container" style="width: 200px; height: 8px; background: #1e293b; border: 1px solid #475569; margin-top: 4px; border-radius: 2px; overflow: hidden; display: flex; align-items: center; position: relative;">
-          <div id="xp-fill" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.1s ease;"></div>
-          <span id="level-text" style="position: absolute; right: 4px; font-size: 8px; color: #ffffff; font-family: sans-serif; font-weight: bold; line-height: 8px;">LVL 1</span>
+        <div class="xp-container">
+          <div id="xp-fill" class="xp-fill"></div>
+          <span id="level-text">LVL 1</span>
         </div>
     
         <div class="gold-container">
           <div class="gold-icon"></div>
           <span id="gold-counter">0</span>
         </div>
+        <div id="stage-text" class="stage-text">Stage 1</div>
+        <div id="stats-text" class="stats-text"></div>
+      </div>
+      <div id="ability-bar" class="ability-bar"></div>
+    </div>
+
+    <div id="toast" class="toast hidden">
+      <div id="toast-title" class="toast-title"></div>
+      <div id="toast-text" class="toast-text"></div>
+    </div>
+
+    <div id="shop-overlay" class="shop-overlay hidden">
+      <div class="shop-panel">
+        <div class="shop-header">
+          <div>
+            <h2 id="shop-title">Stage Cleared</h2>
+            <p>Spend gold before opening the next portal.</p>
+          </div>
+          <div class="shop-gold"><span id="shop-gold">0</span>g</div>
+        </div>
+        <div id="shop-items" class="shop-items"></div>
+        <button id="btn-shop-continue" class="btn">Open Portal</button>
       </div>
     </div>
 
@@ -72,11 +147,15 @@
 
   </div>
   
-  <script src="assets/scripts/systems/constants.js"></script>
-  <script src="assets/scripts/systems/utils.js"></script>
-  <script src="assets/scripts/player/player.js"></script>
-  <script src="assets/scripts/enemies/enemies.js"></script>
-  <script src="assets/scripts/systems/combat.js"></script>
-  <script src="assets/scripts/systems/main.js"></script>
+  <script src="Assets/Scripts/Systems/constants.js"></script>
+  <script src="Assets/Scripts/Systems/utils.js"></script>
+  <script src="Assets/Scripts/Systems/presentation.js"></script>
+  <script src="Assets/Scripts/Systems/items.js"></script>
+  <script src="Assets/Scripts/Player/player.js"></script>
+  <script src="Assets/Scripts/Bosses/bosses.js"></script>
+  <script src="Assets/Scripts/Enemies/enemies.js"></script>
+  <script src="Assets/Scripts/Systems/combat.js"></script>
+  <script src="Assets/Scripts/Player/abilities.js"></script>
+  <script src="Assets/Scripts/Systems/main.js"></script>
 </body>
 </html>
