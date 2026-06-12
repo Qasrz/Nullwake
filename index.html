@@ -52,19 +52,19 @@
       <div class="difficulty-grid">
         <div class="difficulty-card" data-difficulty="easy">
           <h3>Easy</h3>
-          <p>Lower enemy stats, slower waves, heal after every stage.</p>
+          <p>Forgiving enemy stats, fewer waves, slower events, heal after every stage.</p>
         </div>
-        <div class="difficulty-card" data-difficulty="medium">
+        <div class="difficulty-card active-difficulty" data-difficulty="medium">
           <h3>Medium</h3>
-          <p>Gentler scaling and full heals between stages.</p>
+          <p>The old Easy curve. Beatable baseline with full heals between stages.</p>
         </div>
-        <div class="difficulty-card active-difficulty" data-difficulty="hard">
+        <div class="difficulty-card" data-difficulty="hard">
           <h3>Hard</h3>
-          <p>The current baseline. Heal after boss stages only.</p>
+          <p>Sharper pressure and healing only after boss stages.</p>
         </div>
         <div class="difficulty-card" data-difficulty="expert">
           <h3>Expert</h3>
-          <p>Stronger enemies, faster waves, no stage healing.</p>
+          <p>Close to the old Hard baseline, with no free stage healing.</p>
         </div>
       </div>
       <h2 class="menu-subtitle">Artifacts</h2>
@@ -126,6 +126,15 @@
         <div id="stats-text" class="stats-text"></div>
       </div>
       <div id="ability-bar" class="ability-bar"></div>
+      <div id="touch-controls" class="touch-controls">
+        <div id="touch-move" class="touch-stick touch-move">
+          <div id="touch-move-knob" class="touch-stick-knob"></div>
+        </div>
+        <div id="touch-abilities" class="touch-abilities"></div>
+        <div id="touch-aim" class="touch-stick touch-aim">
+          <div id="touch-aim-knob" class="touch-stick-knob"></div>
+        </div>
+      </div>
     </div>
 
     <div id="toast" class="toast hidden">
@@ -171,6 +180,7 @@
   <script src="Assets/Scripts/Enemies/enemies.js"></script>
   <script src="Assets/Scripts/Systems/combat.js"></script>
   <script src="Assets/Scripts/Player/abilities.js"></script>
+  <script src="Assets/Scripts/Player/touchControls.js"></script>
   <script src="Assets/Scripts/Systems/main.js"></script>
 </body>
 </html>

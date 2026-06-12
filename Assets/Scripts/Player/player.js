@@ -34,24 +34,29 @@ function updatePlayer() {
   if (gameState !== "playing" && gameState !== "portalPhase") return;
   if (isPlayerFrozen()) return;
 
-  let dx = 0;
-  let dy = 0;
+  let inputX = 0;
+  let inputY = 0;
 
   const currentSpeed = PLAYER_SPEED * getMoveSpeedMultiplier();
 
-  if (keys.w) dy -= currentSpeed;
-  if (keys.s) dy += currentSpeed;
-  if (keys.a) dx -= currentSpeed;
-  if (keys.d) dx += currentSpeed;
+  if (keys.w) inputY -= 1;
+  if (keys.s) inputY += 1;
+  if (keys.a) inputX -= 1;
+  if (keys.d) inputX += 1;
 
-  if (dx !== 0 && dy !== 0) {
-    const factor = 1 / Math.SQRT2;
-    dx *= factor;
-    dy *= factor;
+  if (touchInput.moveActive) {
+    inputX += touchInput.moveX;
+    inputY += touchInput.moveY;
   }
 
-  player.x = Math.max(0, Math.min(WIDTH - player.size, player.x + dx));
-  player.y = Math.max(0, Math.min(HEIGHT - player.size, player.y + dy));
+  const inputLength = Math.hypot(inputX, inputY);
+  if (inputLength > 1) {
+    inputX /= inputLength;
+    inputY /= inputLength;
+  }
+
+  player.x = Math.max(0, Math.min(WIDTH - player.size, player.x + inputX * currentSpeed));
+  player.y = Math.max(0, Math.min(HEIGHT - player.size, player.y + inputY * currentSpeed));
 }
 
 function healPlayer(amount) {

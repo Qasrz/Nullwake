@@ -34,6 +34,12 @@ const uiShopItems = document.getElementById("shop-items");
 const uiShopGold = document.getElementById("shop-gold");
 const uiShopTitle = document.getElementById("shop-title");
 const btnShopContinue = document.getElementById("btn-shop-continue");
+const uiTouchControls = document.getElementById("touch-controls");
+const uiTouchMove = document.getElementById("touch-move");
+const uiTouchMoveKnob = document.getElementById("touch-move-knob");
+const uiTouchAim = document.getElementById("touch-aim");
+const uiTouchAimKnob = document.getElementById("touch-aim-knob");
+const uiTouchAbilities = document.getElementById("touch-abilities");
 
 const PLAYER_SIZE = 24;
 const PLAYER_SPEED = 3.25;
@@ -54,49 +60,57 @@ const DIFFICULTY_DEFS = {
   easy: {
     id: "easy",
     name: "Easy",
-    desc: "Lower enemy stats, slower pressure, full heal after every stage.",
+    desc: "A forgiving run with fewer enemies, slower events, and full heals after stages.",
+    health: 0.52,
+    damage: 0.45,
+    spawnInterval: 1.75,
+    enemyCount: 0.62,
+    eliteChance: 0.30,
+    runPressure: 0.55,
+    routePressure: 0.58,
+    routeEventChance: 0.18,
+    regen: "stage"
+  },
+  medium: {
+    id: "medium",
+    name: "Medium",
+    desc: "The old Easy curve. Beatable baseline with full heals after stages.",
     health: 0.70,
     damage: 0.65,
     spawnInterval: 1.35,
     enemyCount: 0.82,
     eliteChance: 0.55,
     runPressure: 0.75,
-    regen: "stage"
-  },
-  medium: {
-    id: "medium",
-    name: "Medium",
-    desc: "Gentler enemy stats, full heal after every stage.",
-    health: 0.85,
-    damage: 0.85,
-    spawnInterval: 1.15,
-    enemyCount: 0.92,
-    eliteChance: 0.80,
-    runPressure: 0.90,
+    routePressure: 0.78,
+    routeEventChance: 0.35,
     regen: "stage"
   },
   hard: {
     id: "hard",
     name: "Hard",
-    desc: "Current baseline. Full heal only after bosses.",
-    health: 1.00,
-    damage: 1.00,
-    spawnInterval: 1.00,
-    enemyCount: 1.00,
-    eliteChance: 1.00,
-    runPressure: 1.00,
+    desc: "Sharper enemy stats and less healing, but no longer the old wall.",
+    health: 0.88,
+    damage: 0.86,
+    spawnInterval: 1.12,
+    enemyCount: 0.94,
+    eliteChance: 0.82,
+    runPressure: 0.90,
+    routePressure: 0.94,
+    routeEventChance: 0.50,
     regen: "boss"
   },
   expert: {
     id: "expert",
     name: "Expert",
-    desc: "Higher enemy stats, faster spawns, no stage healing.",
-    health: 1.35,
-    damage: 1.40,
-    spawnInterval: 0.78,
-    enemyCount: 1.18,
-    eliteChance: 1.35,
-    runPressure: 1.18,
+    desc: "Close to the old Hard baseline with no free stage healing.",
+    health: 1.05,
+    damage: 1.06,
+    spawnInterval: 0.98,
+    enemyCount: 1.04,
+    eliteChance: 1.05,
+    runPressure: 1.03,
+    routePressure: 1.08,
+    routeEventChance: 0.68,
     regen: "none"
   }
 };
@@ -343,13 +357,27 @@ let currentLevel = 1;
 let gameState = "menu"; 
 let animationId;
 let selectedCharacterId = "gunner";
-let selectedDifficultyId = "hard";
+let selectedDifficultyId = "medium";
 let unlockedArtifactIds = [];
 let selectedArtifactIds = [];
 let currentShopChoices = [];
 let mouseX = WIDTH / 2;
 let mouseY = HEIGHT / 2;
 let isPrimaryFireHeld = false;
+const touchInput = {
+  movePointerId: null,
+  aimPointerId: null,
+  moveActive: false,
+  aimActive: false,
+  firing: false,
+  moveX: 0,
+  moveY: 0,
+  aimX: 1,
+  aimY: 0,
+  lastAimX: 1,
+  lastAimY: 0,
+  activeAbility: null
+};
 let nextEnemyId = 1;
 let turrets = [];
 let missiles = [];

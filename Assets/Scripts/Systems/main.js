@@ -58,6 +58,8 @@ window.addEventListener('resize', () => {
   HEIGHT = window.innerHeight;
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
+  if (typeof resetTouchMoveStick === "function") resetTouchMoveStick();
+  if (typeof resetTouchAimStick === "function") resetTouchAimStick();
 });
 
 // --- Game Logic ---
@@ -102,6 +104,8 @@ function resetLevel(level = 1, selectedRoute = null) {
   gameState = "playing";
   initializeStageRoute(level, selectedRoute, now);
   resetAbilityCooldowns();
+  if (typeof resetTouchMoveStick === "function") resetTouchMoveStick();
+  if (typeof resetTouchAimStick === "function") resetTouchAimStick();
 
   if (uiShopOverlay) uiShopOverlay.classList.add("hidden");
   uiAlert.classList.add("hidden");
@@ -294,6 +298,8 @@ function drawPortal() {
 function checkPlayerDeath() {
   if (player.health <= 0 && gameState !== "dead") {
     gameState = "dead";
+    if (typeof resetTouchMoveStick === "function") resetTouchMoveStick();
+    if (typeof resetTouchAimStick === "function") resetTouchAimStick();
     if (uiShopOverlay) uiShopOverlay.classList.add("hidden");
     uiAlertText.innerHTML = `You Died.<br>Stage ${currentLevel}<br><span style="font-size: 1rem; color: #94a3b8;">Press R to Restart</span>`;
     uiAlert.classList.remove("hidden");
@@ -317,7 +323,8 @@ function draw(timestamp) {
       const prevY = player.y;
 
       updatePlayer();
-      if (isPrimaryFireHeld && isArtifactActive("fullAuto")) {
+      if (typeof updateTouchControls === "function") updateTouchControls(timestamp);
+      if (!touchInput.firing && isPrimaryFireHeld && isArtifactActive("fullAuto")) {
         fireLaser(mouseX, mouseY, timestamp);
       }
 

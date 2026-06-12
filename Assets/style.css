@@ -5,6 +5,8 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden; /* Prevents scrollbars */
+  overscroll-behavior: none;
+  touch-action: none;
   background: #05070b;
   font-family: system-ui, -apple-system, sans-serif;
   color: #f8fafc;
@@ -16,6 +18,9 @@ body {
   left: 0;
   z-index: 1;
   display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
 }
 
 /* UI Overlays */
@@ -59,6 +64,8 @@ body {
   justify-content: flex-start;
   padding: 28px 16px;
   overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Menus & Buttons */
@@ -413,6 +420,95 @@ body {
   text-overflow: ellipsis;
 }
 
+.touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  display: none;
+  pointer-events: none;
+}
+.touch-stick {
+  position: absolute;
+  width: 124px;
+  height: 124px;
+  border: 1px solid rgba(226, 232, 240, 0.25);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.42);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-move {
+  left: max(18px, env(safe-area-inset-left));
+  bottom: max(18px, env(safe-area-inset-bottom));
+}
+.touch-aim {
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+}
+.touch-stick-knob {
+  --knob-x: 0px;
+  --knob-y: 0px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(248, 250, 252, 0.7);
+  border: 2px solid rgba(15, 23, 42, 0.5);
+  transform: translate(calc(-50% + var(--knob-x)), calc(-50% + var(--knob-y)));
+  box-shadow: 0 8px 18px rgba(0,0,0,0.3);
+}
+.touch-aim .touch-stick-knob {
+  background: rgba(56, 189, 248, 0.74);
+}
+.touch-abilities {
+  position: absolute;
+  right: max(154px, calc(env(safe-area-inset-right) + 154px));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, 58px);
+  gap: 8px;
+  pointer-events: auto;
+}
+.touch-ability {
+  width: 58px;
+  height: 48px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.74);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font: inherit;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.26);
+}
+.touch-ability.ready { border-color: #22c55e; }
+.touch-ability.cooling { opacity: 0.6; }
+.touch-ability.charging { border-color: #facc15; }
+.touch-ability span {
+  color: #94a3b8;
+  font-size: 0.62rem;
+  font-weight: 950;
+  line-height: 1;
+}
+.touch-ability strong {
+  width: 100%;
+  padding: 0 3px;
+  color: #f8fafc;
+  font-size: 0.58rem;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .shop-overlay {
   position: absolute;
   inset: 0;
@@ -424,6 +520,8 @@ body {
   background: rgba(3, 7, 18, 0.72);
   backdrop-filter: blur(3px);
   pointer-events: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .shop-panel {
   width: min(980px, 100%);
@@ -432,6 +530,7 @@ body {
   background: #111827;
   padding: 20px;
   box-shadow: 0 24px 70px rgba(0,0,0,0.5);
+  touch-action: pan-y;
 }
 
 .toast {
@@ -548,20 +647,144 @@ body {
 
 @media (max-width: 860px) {
   .char-grid, .difficulty-grid, .artifact-grid, .shop-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ability-bar { grid-template-columns: repeat(2, minmax(112px, 150px)); }
-  .run-top-center { grid-template-columns: 1fr; top: 12px; right: 12px; left: auto; transform: none; }
-  .boss-frame { top: 112px; }
+  .ability-bar { display: none; }
+  .touch-controls { display: block; }
+  .run-top-center {
+    grid-template-columns: 1fr;
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+    left: auto;
+    transform: none;
+    gap: 4px;
+    max-width: 46vw;
+  }
+  .run-clock, .difficulty-text, .objective-text {
+    padding: 4px 7px;
+    font-size: 0.68rem;
+    line-height: 1.1;
+    border-radius: 8px;
+  }
+  #difficulty-detail { display: none; }
+  .hud-top-left {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+  }
+  .health-container {
+    width: min(178px, 44vw);
+    height: 19px;
+    margin-bottom: 5px;
+  }
+  .xp-container {
+    width: min(178px, 44vw);
+    height: 8px;
+  }
+  .gold-container {
+    gap: 5px;
+    margin-top: 5px;
+    padding: 3px 8px;
+  }
+  .gold-icon { width: 12px; height: 12px; }
+  #gold-counter { font-size: 0.9rem; }
+  .stage-text, .stats-text {
+    max-width: min(178px, 44vw);
+    padding: 3px 7px;
+    font-size: 0.64rem;
+    line-height: 1.2;
+  }
+  .boss-frame {
+    top: 70px;
+    width: calc(100vw - 20px);
+    padding: 8px;
+  }
+  .boss-name { font-size: 0.82rem; }
+  .boss-subtitle { font-size: 0.64rem; }
+  .boss-phase-text { font-size: 0.7rem; }
+  .boss-health { height: 9px; }
+  .toast {
+    top: 16%;
+    padding: 10px 12px;
+  }
+  .toast-title { font-size: 0.98rem; }
+  .toast-text { font-size: 0.76rem; }
+  .shop-overlay {
+    align-items: stretch;
+    overflow: auto;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  }
+  .shop-panel {
+    margin: auto 0;
+    padding: 12px;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+  }
+  .shop-header {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .shop-header h2 { font-size: 1.18rem; }
+  .shop-header p { font-size: 0.78rem; }
+  .shop-gold {
+    padding: 6px 8px;
+    font-size: 0.94rem;
+  }
+  .shop-card {
+    min-height: 156px;
+    padding: 10px;
+  }
+  .shop-card h3 { font-size: 0.88rem; }
+  .shop-card p { font-size: 0.74rem; }
+  .shop-buy { padding: 8px 10px; }
 }
 
 @media (max-width: 520px) {
   .game-title { font-size: 2.7rem; }
   .char-grid, .difficulty-grid, .artifact-grid, .shop-items { grid-template-columns: 1fr; }
-  .health-container, .xp-container { width: 210px; }
-  .ability-bar {
-    width: calc(100% - 24px);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    bottom: 12px;
+  .menu-title { font-size: 1.85rem; margin-bottom: 1rem; }
+  .menu-subtitle { font-size: 1rem; }
+  #menu-char-select.active {
+    padding: 16px 10px;
   }
-  .shop-overlay { align-items: stretch; overflow: auto; }
-  .shop-panel { margin: auto 0; }
+  .char-card, .difficulty-card, .artifact-card {
+    padding: 10px;
+  }
+  .char-card p, .difficulty-card p, .artifact-card p {
+    font-size: 0.74rem;
+  }
+  .char-icon {
+    width: 46px;
+    height: 46px;
+    background-size: 184px 184px;
+  }
+  .touch-stick {
+    width: 108px;
+    height: 108px;
+  }
+  .touch-stick-knob {
+    width: 42px;
+    height: 42px;
+  }
+  .touch-abilities {
+    right: max(134px, calc(env(safe-area-inset-right) + 134px));
+    grid-template-columns: repeat(2, 50px);
+    gap: 6px;
+  }
+  .touch-ability {
+    width: 50px;
+    height: 43px;
+  }
+  .touch-ability strong {
+    font-size: 0.54rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .touch-abilities {
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(132px, calc(env(safe-area-inset-bottom) + 132px));
+  }
+}
+
+@media (pointer: coarse) and (min-width: 861px) {
+  .ability-bar { display: none; }
+  .touch-controls { display: block; }
 }

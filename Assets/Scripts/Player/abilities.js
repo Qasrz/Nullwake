@@ -566,18 +566,29 @@ function updateAbilityHud(timestamp = performance.now()) {
   if (!uiAbilityBar || !player) return;
   const character = getSelectedCharacterDef();
 
-  uiAbilityBar.innerHTML = Object.entries(character.abilities).map(([slot, ability]) => {
+  const abilities = Object.entries(character.abilities).map(([slot, ability]) => {
     const remaining = getAbilityRemaining(slot, timestamp);
     const isCharging = player.charge && player.charge.slot === slot;
     const stateText = isCharging ? "CHARGING" : remaining > 0 ? `${(remaining / 1000).toFixed(1)}s` : ability.name;
     const readyClass = remaining <= 0 ? "ready" : "cooling";
     const chargeClass = isCharging ? "charging" : "";
 
-    return `
+    return { slot, ability, stateText, readyClass, chargeClass };
+  });
+
+  uiAbilityBar.innerHTML = abilities.map(({ ability, stateText, readyClass, chargeClass }) => `
       <div class="ability ${readyClass} ${chargeClass}">
         <span class="ability-key">${ability.label}</span>
         <span class="ability-name">${stateText}</span>
       </div>
-    `;
-  }).join("");
+    `).join("");
+
+  if (uiTouchAbilities) {
+    uiTouchAbilities.innerHTML = abilities.map(({ slot, ability, stateText, readyClass, chargeClass }) => `
+      <button class="touch-ability ${readyClass} ${chargeClass}" data-touch-ability="${slot}">
+        <span>${ability.label}</span>
+        <strong>${stateText}</strong>
+      </button>
+    `).join("");
+  }
 }

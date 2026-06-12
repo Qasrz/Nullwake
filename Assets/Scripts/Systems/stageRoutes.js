@@ -10,8 +10,8 @@ const STAGE_ROUTE_DEFS = {
     goldPerStage: 2,
     bonusXp: 0,
     shopChoices: 0,
-    enemyCountMultiplier: 1.05,
-    spawnIntervalMultiplier: 0.92,
+    enemyCountMultiplier: 0.92,
+    spawnIntervalMultiplier: 1.05,
     enemyHealthMultiplier: 1,
     enemyDamageMultiplier: 1,
     enemyPool: ["melee", "shooter", "mage", "lazer", "splitter"]
@@ -28,10 +28,10 @@ const STAGE_ROUTE_DEFS = {
     bonusXp: 32,
     xpPerStage: 7,
     shopChoices: 1,
-    enemyCountMultiplier: 1.45,
-    spawnIntervalMultiplier: 0.72,
-    enemyHealthMultiplier: 0.88,
-    enemyDamageMultiplier: 0.96,
+    enemyCountMultiplier: 0.96,
+    spawnIntervalMultiplier: 1.12,
+    enemyHealthMultiplier: 0.82,
+    enemyDamageMultiplier: 0.84,
     enemyPool: ["shooter", "mage", "lazer", "orbiter"]
   },
   cache: {
@@ -46,10 +46,10 @@ const STAGE_ROUTE_DEFS = {
     bonusXp: 18,
     xpPerStage: 4,
     shopChoices: 2,
-    enemyCountMultiplier: 0.66,
-    spawnIntervalMultiplier: 1.04,
-    enemyHealthMultiplier: 1.05,
-    enemyDamageMultiplier: 0.96,
+    enemyCountMultiplier: 0.58,
+    spawnIntervalMultiplier: 1.16,
+    enemyHealthMultiplier: 0.94,
+    enemyDamageMultiplier: 0.84,
     enemyPool: ["melee", "splitter", "shooter", "orbiter"]
   },
   gauntlet: {
@@ -64,10 +64,10 @@ const STAGE_ROUTE_DEFS = {
     bonusXp: 24,
     xpPerStage: 6,
     shopChoices: 1,
-    enemyCountMultiplier: 1.3,
-    spawnIntervalMultiplier: 0.78,
-    enemyHealthMultiplier: 1.08,
-    enemyDamageMultiplier: 1.04,
+    enemyCountMultiplier: 0.78,
+    spawnIntervalMultiplier: 1.18,
+    enemyHealthMultiplier: 0.94,
+    enemyDamageMultiplier: 0.9,
     enemyPool: ["melee", "shooter", "mage", "lazer", "splitter", "orbiter"]
   },
   miniboss: {
@@ -82,10 +82,10 @@ const STAGE_ROUTE_DEFS = {
     bonusXp: 45,
     xpPerStage: 8,
     shopChoices: 1,
-    enemyCountMultiplier: 0.5,
-    spawnIntervalMultiplier: 1.12,
-    enemyHealthMultiplier: 1.12,
-    enemyDamageMultiplier: 1.06,
+    enemyCountMultiplier: 0.38,
+    spawnIntervalMultiplier: 1.22,
+    enemyHealthMultiplier: 0.96,
+    enemyDamageMultiplier: 0.9,
     enemyPool: ["melee", "shooter", "splitter"]
   },
   boss: {
@@ -148,6 +148,26 @@ const STAGE_EVENT_DEFS = [
   }
 ];
 
+function getRouteDifficultyPressure() {
+  const difficulty = getDifficultyDef();
+  return difficulty.routePressure || 1;
+}
+
+function getRouteEventChance(route) {
+  const difficulty = getDifficultyDef();
+  const baseChance = difficulty.routeEventChance !== undefined ? difficulty.routeEventChance : 0.45;
+  if (!route) return baseChance;
+  if (route.elite) return 1;
+  if (route.mode === "gauntlet") return Math.min(0.88, baseChance + 0.16);
+  if (route.mode === "survive") return Math.min(0.8, baseChance + 0.1);
+  return baseChance;
+}
+
+function getRouteHazardIntervalMultiplier() {
+  const pressure = getRouteDifficultyPressure();
+  return clamp(1.42 - pressure * 0.42, 0.82, 1.35);
+}
+
 function cloneStageRoute(routeId, level, elite = false) {
   const def = STAGE_ROUTE_DEFS[routeId] || STAGE_ROUTE_DEFS.onslaught;
   return {
@@ -209,17 +229,17 @@ function initializeStageRoute(level, selectedRoute, timestamp = performance.now(
 function chooseStageEvent(route) {
   if (!route || route.mode === "boss") return null;
 
-  const guaranteed = route.elite || route.mode === "gauntlet" || route.mode === "survive";
-  if (!guaranteed && Math.random() > 0.42) return null;
+  if (Math.random() > getRouteEventChance(route)) return null;
 
   const event = STAGE_EVENT_DEFS[Math.floor(Math.random() * STAGE_EVENT_DEFS.length)];
   return { ...event };
 }
 
 function getRouteSurvivalDuration(route = currentStageRoute) {
-  const baseDuration = 24000 + currentLevel * 1100;
-  const eliteBonus = route && route.elite ? 5000 : 0;
-  return Math.min(44000, baseDuration + eliteBonus);
+  const pressure = getRouteDifficultyPressure();
+  const baseDuration = 19000 + currentLevel * (750 + pressure * 250);
+  const eliteBonus = route && route.elite ? 3500 : 0;
+  return Math.min(38000, baseDuration + eliteBonus);
 }
 
 function getCurrentStageEnemyTarget(stage = currentLevel) {
@@ -227,33 +247,39 @@ function getCurrentStageEnemyTarget(stage = currentLevel) {
   if (!route || stage % 5 === 0 || route.mode === "boss") return getStageEnemyCount(stage);
 
   const baseCount = getStageEnemyCount(stage);
-  const eliteMultiplier = route.elite ? 1.22 : 1;
+  const pressure = getRouteDifficultyPressure();
+  const difficultyRouteMultiplier = clamp(0.72 + pressure * 0.28, 0.72, 1.05);
+  const eliteMultiplier = route.elite ? 1.16 : 1;
 
   if (route.mode === "survive") {
-    return Math.max(9, Math.ceil(baseCount * route.enemyCountMultiplier * eliteMultiplier));
+    return Math.max(5, Math.ceil(baseCount * route.enemyCountMultiplier * difficultyRouteMultiplier * eliteMultiplier));
   }
 
   if (route.mode === "miniboss") {
-    return 1 + Math.max(3, Math.ceil(baseCount * route.enemyCountMultiplier * eliteMultiplier));
+    return 1 + Math.max(2, Math.ceil(baseCount * route.enemyCountMultiplier * difficultyRouteMultiplier * eliteMultiplier));
   }
 
-  return Math.max(1, Math.ceil(baseCount * (route.enemyCountMultiplier || 1) * eliteMultiplier));
+  return Math.max(1, Math.ceil(baseCount * (route.enemyCountMultiplier || 1) * difficultyRouteMultiplier * eliteMultiplier));
 }
 
 function getCurrentStageSpawnInterval(stage = currentLevel) {
   const route = currentStageRoute;
   const eventMultiplier = currentStageEvent ? currentStageEvent.spawnIntervalMultiplier || 1 : 1;
   const routeMultiplier = route ? route.spawnIntervalMultiplier || 1 : 1;
-  const eliteMultiplier = route && route.elite ? 0.84 : 1;
-  return Math.max(230, getStageSpawnInterval(stage) * routeMultiplier * eventMultiplier * eliteMultiplier);
+  const difficultyMultiplier = getRouteHazardIntervalMultiplier();
+  const eliteMultiplier = route && route.elite ? 0.9 : 1;
+  return Math.max(330, getStageSpawnInterval(stage) * routeMultiplier * eventMultiplier * difficultyMultiplier * eliteMultiplier);
 }
 
 function getCurrentRouteEnemyStatMultiplier() {
   const route = currentStageRoute;
-  const eliteMultiplier = route && route.elite ? 1.18 : 1;
+  const pressure = getRouteDifficultyPressure();
+  const pressureHealth = clamp(0.82 + pressure * 0.18, 0.82, 1.08);
+  const pressureDamage = clamp(0.78 + pressure * 0.22, 0.78, 1.1);
+  const eliteMultiplier = route && route.elite ? 1.14 : 1;
   return {
-    health: (route ? route.enemyHealthMultiplier || 1 : 1) * eliteMultiplier,
-    damage: (route ? route.enemyDamageMultiplier || 1 : 1) * (route && route.elite ? 1.12 : 1)
+    health: (route ? route.enemyHealthMultiplier || 1 : 1) * pressureHealth * eliteMultiplier,
+    damage: (route ? route.enemyDamageMultiplier || 1 : 1) * pressureDamage * (route && route.elite ? 1.08 : 1)
   };
 }
 
@@ -412,8 +438,9 @@ function updateStageRoute(timestamp, delta) {
   if (!currentStageRoute || currentStageRoute.mode === "boss") return;
 
   if (currentStageRoute.mode === "survive" || currentStageRoute.mode === "gauntlet") {
-    const interval = currentStageRoute.mode === "survive" ? 850 : 1500;
-    const eliteMultiplier = currentStageRoute.elite ? 0.78 : 1;
+    const baseInterval = currentStageRoute.mode === "survive" ? 1400 : 2300;
+    const interval = baseInterval * getRouteHazardIntervalMultiplier();
+    const eliteMultiplier = currentStageRoute.elite ? 0.88 : 1;
     if (timestamp - lastRoutePatternAt >= interval * eliteMultiplier) {
       spawnRouteBulletPattern(timestamp);
       lastRoutePatternAt = timestamp;
@@ -434,13 +461,14 @@ function getRouteHazardDamage(multiplier = 1) {
 
 function spawnRouteBulletPattern(timestamp) {
   const pattern = Math.floor(Math.random() * 4);
-  const damage = getRouteHazardDamage(0.72);
+  const pressure = getRouteDifficultyPressure();
+  const damage = getRouteHazardDamage(0.62);
   const color = currentStageRoute.color;
   const center = getPlayerCenter();
 
   if (pattern === 0) {
     const fromLeft = Math.random() < 0.5;
-    const count = 6 + Math.min(6, Math.floor(currentLevel / 2));
+    const count = Math.max(3, Math.floor((4 + Math.min(4, Math.floor(currentLevel / 3))) * pressure));
     for (let i = 0; i < count; i++) {
       const y = 60 + (HEIGHT - 120) * (i + 0.5) / count;
       const x = fromLeft ? -12 : WIDTH + 12;
@@ -457,7 +485,7 @@ function spawnRouteBulletPattern(timestamp) {
     const sourceX = randRange(WIDTH * 0.25, WIDTH * 0.75);
     const sourceY = randRange(HEIGHT * 0.22, HEIGHT * 0.78);
     const gapAngle = Math.atan2(center.y - sourceY, center.x - sourceX);
-    fireEnemyRadial(sourceX, sourceY, 14 + Math.min(8, currentLevel), {
+    fireEnemyRadial(sourceX, sourceY, Math.max(8, Math.floor((11 + Math.min(5, currentLevel)) * pressure)), {
       speed: ENEMY_PROJECTILE_SPEED * 0.92,
       radius: ENEMY_PROJECTILE_RADIUS * 0.9,
       damage,
@@ -466,8 +494,8 @@ function spawnRouteBulletPattern(timestamp) {
       gapSize: 0.22
     });
   } else if (pattern === 2) {
-    createBossImpactHazard(center.x + randRange(-150, 150), center.y + randRange(-120, 120), 42, timestamp, damage * 1.15, color);
-    createBossImpactHazard(randRange(80, WIDTH - 80), randRange(90, HEIGHT - 80), 34, timestamp, damage, color);
+    createBossImpactHazard(center.x + randRange(-150, 150), center.y + randRange(-120, 120), 36, timestamp, damage * 1.05, color);
+    if (pressure > 0.72) createBossImpactHazard(randRange(80, WIDTH - 80), randRange(90, HEIGHT - 80), 30, timestamp, damage, color);
   } else {
     const points = [
       { x: WIDTH * 0.15, y: -12 },
@@ -475,7 +503,8 @@ function spawnRouteBulletPattern(timestamp) {
       { x: -12, y: HEIGHT * 0.3 },
       { x: WIDTH + 12, y: HEIGHT * 0.7 }
     ];
-    for (const point of points) {
+    const activePoints = points.slice(0, pressure < 0.7 ? 2 : pressure < 0.95 ? 3 : 4);
+    for (const point of activePoints) {
       const angle = Math.atan2(center.y - point.y, center.x - point.x) + randRange(-0.18, 0.18);
       fireEnemyBullet(point.x, point.y, angle, {
         speed: ENEMY_PROJECTILE_SPEED * 1.08,
@@ -492,7 +521,7 @@ function spawnRouteBulletPattern(timestamp) {
 function updateStageEvent(timestamp) {
   if (!currentStageEvent) return;
 
-  const interval = (currentStageEvent.interval || 2600) * (currentStageRoute && currentStageRoute.elite ? 0.82 : 1);
+  const interval = (currentStageEvent.interval || 2600) * getRouteHazardIntervalMultiplier() * (currentStageRoute && currentStageRoute.elite ? 0.9 : 1);
   if (timestamp < lastStageEventAt) return;
   lastStageEventAt = timestamp + interval;
 
@@ -501,11 +530,11 @@ function updateStageEvent(timestamp) {
   const color = currentStageEvent.color;
 
   if (currentStageEvent.id === "meteorRain") {
-    createBossImpactHazard(center.x + randRange(-110, 110), center.y + randRange(-90, 90), 46, timestamp, damage * 1.2, color);
-    createBossImpactHazard(randRange(70, WIDTH - 70), randRange(90, HEIGHT - 70), 36, timestamp, damage, color);
+    createBossImpactHazard(center.x + randRange(-110, 110), center.y + randRange(-90, 90), 40, timestamp, damage * 1.1, color);
+    if (getRouteDifficultyPressure() > 0.7) createBossImpactHazard(randRange(70, WIDTH - 70), randRange(90, HEIGHT - 70), 32, timestamp, damage, color);
   } else if (currentStageEvent.id === "needleRain") {
     const vertical = Math.random() < 0.5;
-    const count = 7 + Math.min(5, currentLevel);
+    const count = Math.max(4, Math.floor((6 + Math.min(4, currentLevel)) * getRouteDifficultyPressure()));
     for (let i = 0; i < count; i++) {
       const t = (i + 0.5) / count;
       const x = vertical ? WIDTH * t : Math.random() < 0.5 ? -10 : WIDTH + 10;
