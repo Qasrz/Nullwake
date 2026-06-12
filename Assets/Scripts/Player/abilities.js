@@ -572,21 +572,22 @@ function updateAbilityHud(timestamp = performance.now()) {
     const stateText = isCharging ? "CHARGING" : remaining > 0 ? `${(remaining / 1000).toFixed(1)}s` : ability.name;
     const readyClass = remaining <= 0 ? "ready" : "cooling";
     const chargeClass = isCharging ? "charging" : "";
+    const inputLabel = typeof getAbilityInputLabel === "function" ? getAbilityInputLabel(slot, ability.label) : ability.label;
 
-    return { slot, ability, stateText, readyClass, chargeClass };
+    return { slot, ability, stateText, readyClass, chargeClass, inputLabel };
   });
 
-  uiAbilityBar.innerHTML = abilities.map(({ ability, stateText, readyClass, chargeClass }) => `
+  uiAbilityBar.innerHTML = abilities.map(({ inputLabel, stateText, readyClass, chargeClass }) => `
       <div class="ability ${readyClass} ${chargeClass}">
-        <span class="ability-key">${ability.label}</span>
+        <span class="ability-key">${inputLabel}</span>
         <span class="ability-name">${stateText}</span>
       </div>
     `).join("");
 
   if (uiTouchAbilities) {
-    uiTouchAbilities.innerHTML = abilities.map(({ slot, ability, stateText, readyClass, chargeClass }) => `
+    uiTouchAbilities.innerHTML = abilities.map(({ slot, inputLabel, stateText, readyClass, chargeClass }) => `
       <button class="touch-ability ${readyClass} ${chargeClass}" data-touch-ability="${slot}">
-        <span>${ability.label}</span>
+        <span>${inputLabel}</span>
         <strong>${stateText}</strong>
       </button>
     `).join("");

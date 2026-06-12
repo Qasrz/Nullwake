@@ -15,6 +15,7 @@
       <div class="title-mark">NULLWAKE PROTOCOL</div>
       <h1 class="game-title">NULLWAKE</h1>
       <p class="game-subtitle">Survive escalating zones, break boss patterns, and build something absurd.</p>
+      <button id="btn-continue" class="btn hidden">Continue</button>
       <button id="btn-play" class="btn">Play</button>
       <button id="btn-settings" class="btn secondary">Settings</button>
     </div>
@@ -77,13 +78,11 @@
 
     <div id="menu-settings" class="screen">
       <h2 class="menu-title">Settings</h2>
-      <div class="settings-box">
-        <p><strong>Move:</strong> W, A, S, D</p>
-        <p><strong>Shoot:</strong> Left Click</p>
-        <p><strong>Abilities:</strong> Right Click, Shift, Q, hold E</p>
-        <p><strong>Restart:</strong> R (when dead)</p>
+      <div id="settings-panel" class="settings-panel"></div>
+      <div class="menu-actions">
+        <button id="btn-reset-settings" class="btn secondary">Reset Defaults</button>
+        <button id="btn-back-settings" class="btn secondary">Back</button>
       </div>
-      <button id="btn-back-settings" class="btn secondary">Back</button>
     </div>
 
     <div id="game-hud" class="screen">
@@ -135,6 +134,7 @@
           <div id="touch-aim-knob" class="touch-stick-knob"></div>
         </div>
       </div>
+      <button id="btn-mobile-pause" class="mobile-pause-button" aria-label="Pause">II</button>
     </div>
 
     <div id="toast" class="toast hidden">
@@ -159,6 +159,20 @@
     
     <div id="game-alert" class="alert hidden">
       <h2 id="alert-text"></h2>
+      <div class="alert-actions">
+        <button id="btn-death-retry" class="btn">Retry</button>
+        <button id="btn-death-menu" class="btn secondary">Main Menu</button>
+      </div>
+    </div>
+
+    <div id="pause-overlay" class="pause-overlay hidden">
+      <div class="pause-panel">
+        <div class="title-mark">PAUSED</div>
+        <h2>Run Suspended</h2>
+        <button id="btn-resume" class="btn">Resume</button>
+        <button id="btn-pause-settings" class="btn secondary">Settings</button>
+        <button id="btn-pause-menu" class="btn secondary">Main Menu</button>
+      </div>
     </div>
 
   </div>
@@ -168,6 +182,7 @@
   <script src="Assets/Scripts/Systems/sprites.js"></script>
   <script src="Assets/Scripts/Systems/presentation.js"></script>
   <script src="Assets/Scripts/Systems/artifacts.js"></script>
+  <script src="Assets/Scripts/Systems/settings.js"></script>
   <script src="Assets/Scripts/Systems/items.js"></script>
   <script src="Assets/Scripts/Systems/stageRoutes.js"></script>
   <script src="Assets/Scripts/Player/player.js"></script>

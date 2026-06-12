@@ -85,6 +85,7 @@ function createRunStats() {
     goldCollected: 0,
     abilitiesUsed: 0,
     expertFirstBossKilled: false,
+    hardGauntletsCleared: 0,
     highestStage: 1
   };
 }
@@ -124,6 +125,9 @@ function noteStageCleared() {
   runStats.stagesCleared++;
   runStats.highestStage = Math.max(runStats.highestStage, currentLevel);
   if (runStats.damageTaken === 0) runStats.noHitStagesCleared++;
+  if (currentStageRoute && currentStageRoute.mode === "gauntlet" && (selectedDifficultyId === "hard" || selectedDifficultyId === "expert")) {
+    runStats.hardGauntletsCleared++;
+  }
   checkArtifactChallenges();
 }
 
@@ -135,6 +139,7 @@ function checkArtifactChallenges() {
   if (runStats.abilitiesUsed >= 30) unlockArtifact("overclock");
   if (runStats.goldCollected >= 300) unlockArtifact("goldRush");
   if (runStats.eliteKills >= 15) unlockArtifact("elitePact");
+  if (runStats.hardGauntletsCleared >= 1) unlockArtifact("stormPact");
 }
 
 function getArtifactSpawnIntervalMultiplier() {
@@ -163,6 +168,10 @@ function getArtifactEliteChanceMultiplier() {
 
 function getArtifactGoldRewardMultiplier(enemy) {
   return isArtifactActive("elitePact") && enemy && enemy.elite ? 2 : 1;
+}
+
+function getArtifactStageEventGoldMultiplier() {
+  return isArtifactActive("stormPact") ? 1.45 : 1;
 }
 
 loadArtifactUnlocks();

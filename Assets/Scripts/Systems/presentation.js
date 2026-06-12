@@ -91,6 +91,8 @@ function drawParticles(timestamp) {
 }
 
 function addFloatingText(text, x, y, color = "#f8fafc", size = 14) {
+  if (typeof gameSettings !== "undefined" && gameSettings.gameplay && !gameSettings.gameplay.damageNumbers) return;
+
   floatingTexts.push({
     text,
     x,
@@ -127,6 +129,8 @@ function drawFloatingTexts(timestamp) {
 }
 
 function addScreenShake(amount = 6, duration = 220) {
+  if (typeof gameSettings !== "undefined" && gameSettings.gameplay && !gameSettings.gameplay.screenShake) return;
+
   screenShake.amount = Math.max(screenShake.amount, amount);
   screenShake.endsAt = Math.max(screenShake.endsAt, performance.now() + duration);
 }

@@ -2,6 +2,93 @@
 function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   document.getElementById(screenId).classList.add('active');
+  updateContinueButton();
+}
+
+function hasContinuableRun() {
+  return !!player && gameState !== "menu" && gameState !== "dead";
+}
+
+function updateContinueButton() {
+  if (!btnContinue) return;
+  btnContinue.classList.toggle("hidden", !hasContinuableRun());
+}
+
+function resetInputState() {
+  Object.keys(keys).forEach(key => keys[key] = false);
+  isPrimaryFireHeld = false;
+  if (typeof resetTouchMoveStick === "function") resetTouchMoveStick();
+  if (typeof resetTouchAimStick === "function") resetTouchAimStick();
+}
+
+function openPauseMenu() {
+  if (!hasContinuableRun() || isPaused) return;
+  isPaused = true;
+  resetInputState();
+  showScreen("game-hud");
+  if (uiPauseOverlay) uiPauseOverlay.classList.remove("hidden");
+}
+
+function closePauseMenu() {
+  if (!hasContinuableRun()) return;
+  isPaused = false;
+  if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
+  showScreen("game-hud");
+}
+
+function togglePauseMenu() {
+  if (isPaused) closePauseMenu();
+  else if (gameState === "playing" || gameState === "portalPhase") openPauseMenu();
+}
+
+function openSettingsScreen(returnTarget = "menu") {
+  settingsReturnTarget = returnTarget;
+  if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
+  renderSettingsPanel();
+  showScreen("menu-settings");
+}
+
+function closeSettingsScreen() {
+  pendingRebindAction = null;
+  if (settingsReturnTarget === "pause" && hasContinuableRun()) {
+    showScreen("game-hud");
+    if (uiPauseOverlay) uiPauseOverlay.classList.remove("hidden");
+  } else {
+    showScreen("menu-main");
+  }
+  renderSettingsPanel();
+}
+
+function returnPausedRunToMenu() {
+  if (!hasContinuableRun()) return;
+  isPaused = true;
+  resetInputState();
+  if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
+  showScreen("menu-main");
+}
+
+function continueRun() {
+  if (!hasContinuableRun()) return;
+  isPaused = false;
+  if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
+  if (uiAlert) uiAlert.classList.add("hidden");
+  showScreen("game-hud");
+}
+
+function restartRun() {
+  if (uiAlert) uiAlert.classList.add("hidden");
+  isPaused = false;
+  showScreen("game-hud");
+  resetLevel(1);
+}
+
+function abandonDeadRunToMenu() {
+  isPaused = false;
+  gameState = "menu";
+  resetInputState();
+  if (uiAlert) uiAlert.classList.add("hidden");
+  if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
+  showScreen("menu-main");
 }
 
 function initializeCharacterSelect() {
@@ -23,6 +110,8 @@ function initializeCharacterSelect() {
 
   decorateCharacterCards();
   renderArtifactGrid();
+  renderSettingsPanel();
+  updateContinueButton();
 }
 
 function decorateCharacterCards() {
@@ -37,9 +126,17 @@ function decorateCharacterCards() {
 
 // Menu Button Event Listeners
 document.getElementById('btn-play').addEventListener('click', () => showScreen('menu-char-select'));
-document.getElementById('btn-settings').addEventListener('click', () => showScreen('menu-settings'));
+document.getElementById('btn-settings').addEventListener('click', () => openSettingsScreen("menu"));
 document.getElementById('btn-back-char').addEventListener('click', () => showScreen('menu-main'));
-document.getElementById('btn-back-settings').addEventListener('click', () => showScreen('menu-main'));
+document.getElementById('btn-back-settings').addEventListener('click', closeSettingsScreen);
+if (btnContinue) btnContinue.addEventListener("click", continueRun);
+if (btnResume) btnResume.addEventListener("click", closePauseMenu);
+if (btnPauseSettings) btnPauseSettings.addEventListener("click", () => openSettingsScreen("pause"));
+if (btnPauseMenu) btnPauseMenu.addEventListener("click", returnPausedRunToMenu);
+if (btnMobilePause) btnMobilePause.addEventListener("click", openPauseMenu);
+if (btnDeathRetry) btnDeathRetry.addEventListener("click", restartRun);
+if (btnDeathMenu) btnDeathMenu.addEventListener("click", abandonDeadRunToMenu);
+if (btnResetSettings) btnResetSettings.addEventListener("click", resetGameplaySettings);
 
 document.getElementById('btn-start').addEventListener('click', () => {
   showScreen('game-hud');
@@ -102,12 +199,13 @@ function resetLevel(level = 1, selectedRoute = null) {
   lastEnemySpawn = 0;
   enemiesSpawned = 0;
   gameState = "playing";
+  isPaused = false;
   initializeStageRoute(level, selectedRoute, now);
   resetAbilityCooldowns();
-  if (typeof resetTouchMoveStick === "function") resetTouchMoveStick();
-  if (typeof resetTouchAimStick === "function") resetTouchAimStick();
+  resetInputState();
 
   if (uiShopOverlay) uiShopOverlay.classList.add("hidden");
+  if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
   uiAlert.classList.add("hidden");
   showToast(getStageTheme(level).name, getStageIntroText(), 1800);
   updateDOMHud();
@@ -298,11 +396,13 @@ function drawPortal() {
 function checkPlayerDeath() {
   if (player.health <= 0 && gameState !== "dead") {
     gameState = "dead";
-    if (typeof resetTouchMoveStick === "function") resetTouchMoveStick();
-    if (typeof resetTouchAimStick === "function") resetTouchAimStick();
+    isPaused = false;
+    resetInputState();
     if (uiShopOverlay) uiShopOverlay.classList.add("hidden");
-    uiAlertText.innerHTML = `You Died.<br>Stage ${currentLevel}<br><span style="font-size: 1rem; color: #94a3b8;">Press R to Restart</span>`;
+    if (uiPauseOverlay) uiPauseOverlay.classList.add("hidden");
+    uiAlertText.innerHTML = `You Died.<br>Stage ${currentLevel}<br><span style="font-size: 1rem; color: #94a3b8;">Retry or return to the menu.</span>`;
     uiAlert.classList.remove("hidden");
+    updateContinueButton();
   }
 }
 
@@ -316,7 +416,7 @@ function draw(timestamp) {
   const gameVisible = gameState === "playing" || gameState === "portalPhase" || gameState === "shop" || gameState === "dead";
 
   if (gameVisible) {
-    if (gameState !== "dead" && gameState !== "shop") {
+    if (!isPaused && gameState !== "dead" && gameState !== "shop") {
       elapsed += delta;
 
       const prevX = player.x;
@@ -373,12 +473,14 @@ function draw(timestamp) {
       } else if (gameState === "portalPhase") {
         checkPortalEntry();
       }
-    } else if (gameState === "shop") {
+    } else if (!isPaused && gameState === "shop") {
       updateVisualEffects(timestamp);
       updateParticles(delta, timestamp);
       updateFloatingTexts(delta, timestamp);
       updateToast(timestamp);
       updateDOMHud();
+    } else if (isPaused) {
+      updateToast(timestamp);
     }
 
     const shake = getCameraShakeOffset(timestamp);
@@ -414,7 +516,7 @@ canvas.addEventListener("mousedown", (event) => {
   mouseX = event.clientX;
   mouseY = event.clientY;
 
-  if (gameState === "playing" || gameState === "portalPhase") {
+  if (!isPaused && (gameState === "playing" || gameState === "portalPhase")) {
     if (event.button === 0) {
       isPrimaryFireHeld = true;
       fireLaser(event.clientX, event.clientY, performance.now());
@@ -428,30 +530,54 @@ window.addEventListener("mouseup", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
-  const key = event.key.toLowerCase();
-
-  if (key === "r" && gameState === "dead") {
-    showScreen('menu-main');
-    gameState = "menu";
-    uiAlert.classList.add("hidden");
+  if (pendingRebindAction) {
+    bindActionToKey(pendingRebindAction, event.key);
+    event.preventDefault();
     return;
   }
 
-  if (key in keys) {
-    keys[key] = true;
+  const action = getActionForEvent(event);
+  if (!action) return;
+
+  if (action === "pause" && !event.repeat) {
+    togglePauseMenu();
+    event.preventDefault();
+    return;
+  }
+
+  if (action === "restart" && gameState === "dead" && !event.repeat) {
+    restartRun();
+    event.preventDefault();
+    return;
+  }
+
+  if (isPaused) {
+    event.preventDefault();
+    return;
+  }
+
+  if (isMovementAction(action)) {
+    setMovementActionState(action, true);
     event.preventDefault();
   }
 
-  if (gameState === "playing" && !event.repeat) {
-    if (key === "shift") {
+  if ((gameState === "playing" || gameState === "portalPhase") && !event.repeat) {
+    if (action === "fire") {
+      isPrimaryFireHeld = true;
+      fireLaser(mouseX, mouseY, performance.now());
+      event.preventDefault();
+    } else if (action === "abilityRight") {
+      useAbility("right", mouseX, mouseY, performance.now());
+      event.preventDefault();
+    } else if (action === "abilityShift") {
       const ability = getAbilityDef("shift");
       if (ability && ability.hold) beginAbilityCharge("shift", performance.now());
       else useAbility("shift", mouseX, mouseY, performance.now());
       event.preventDefault();
-    } else if (key === "q") {
+    } else if (action === "abilityQ") {
       useAbility("q", mouseX, mouseY, performance.now());
       event.preventDefault();
-    } else if (key === "e") {
+    } else if (action === "abilityE") {
       beginAbilityCharge("e", performance.now());
       event.preventDefault();
     }
@@ -459,16 +585,21 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keyup", (event) => {
-  const key = event.key.toLowerCase();
-  if (key in keys) {
-    keys[key] = false;
+  const action = getActionForEvent(event);
+  if (!action) return;
+
+  if (isMovementAction(action)) {
+    setMovementActionState(action, false);
     event.preventDefault();
   }
 
-  if (key === "e") {
+  if (action === "fire") {
+    isPrimaryFireHeld = false;
+    event.preventDefault();
+  } else if (action === "abilityE") {
     releaseAbilityCharge("e", performance.now());
     event.preventDefault();
-  } else if (key === "shift") {
+  } else if (action === "abilityShift") {
     releaseAbilityCharge("shift", performance.now());
     event.preventDefault();
   }

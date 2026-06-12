@@ -1,5 +1,5 @@
 function isTouchGameplayActive() {
-  return gameState === "playing" || gameState === "portalPhase";
+  return !isPaused && (gameState === "playing" || gameState === "portalPhase");
 }
 
 function setTouchKnob(knob, x, y) {
@@ -73,6 +73,8 @@ function resetTouchAimStick() {
 
 function getNearestTouchTarget() {
   if (!player) return null;
+  if (typeof gameSettings !== "undefined" && gameSettings.gameplay && !gameSettings.gameplay.mobileAutoAim) return null;
+
   const center = getPlayerCenter();
   let closest = null;
   let closestDist = Infinity;

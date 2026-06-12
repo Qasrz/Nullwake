@@ -34,6 +34,16 @@ const uiShopItems = document.getElementById("shop-items");
 const uiShopGold = document.getElementById("shop-gold");
 const uiShopTitle = document.getElementById("shop-title");
 const btnShopContinue = document.getElementById("btn-shop-continue");
+const btnContinue = document.getElementById("btn-continue");
+const btnResume = document.getElementById("btn-resume");
+const btnPauseSettings = document.getElementById("btn-pause-settings");
+const btnPauseMenu = document.getElementById("btn-pause-menu");
+const btnMobilePause = document.getElementById("btn-mobile-pause");
+const btnDeathRetry = document.getElementById("btn-death-retry");
+const btnDeathMenu = document.getElementById("btn-death-menu");
+const btnResetSettings = document.getElementById("btn-reset-settings");
+const uiPauseOverlay = document.getElementById("pause-overlay");
+const uiSettingsPanel = document.getElementById("settings-panel");
 const uiTouchControls = document.getElementById("touch-controls");
 const uiTouchMove = document.getElementById("touch-move");
 const uiTouchMoveKnob = document.getElementById("touch-move-knob");
@@ -233,6 +243,13 @@ const ARTIFACT_DEFS = [
     desc: "Elites appear much more often and drop extra gold.",
     hint: "Kill 15 elites in one run.",
     color: "#a78bfa"
+  },
+  {
+    id: "stormPact",
+    name: "Artifact of Rift Weather",
+    desc: "Stages after the first can have random stage effects. Event stages grant more gold.",
+    hint: "Clear a Gauntlet route on Hard or Expert.",
+    color: "#06b6d4"
   }
 ];
 
@@ -356,6 +373,9 @@ let enemiesSpawned = 0;
 let currentLevel = 1;
 let gameState = "menu"; 
 let animationId;
+let isPaused = false;
+let settingsReturnTarget = "menu";
+let pendingRebindAction = null;
 let selectedCharacterId = "gunner";
 let selectedDifficultyId = "medium";
 let unlockedArtifactIds = [];

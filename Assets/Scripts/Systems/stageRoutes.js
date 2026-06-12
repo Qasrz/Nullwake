@@ -228,6 +228,8 @@ function initializeStageRoute(level, selectedRoute, timestamp = performance.now(
 
 function chooseStageEvent(route) {
   if (!route || route.mode === "boss") return null;
+  if (currentLevel <= 1) return null;
+  if (!isArtifactActive("stormPact")) return null;
 
   if (Math.random() > getRouteEventChance(route)) return null;
 
@@ -353,7 +355,8 @@ function getStageRewardGold() {
   if (!currentStageRoute || currentStageRoute.mode === "boss") return 0;
   const routeGold = (currentStageRoute.bonusGold || 0) + currentLevel * (currentStageRoute.goldPerStage || 0);
   const eventGold = currentStageEvent ? currentStageEvent.rewardGold || 0 : 0;
-  return Math.floor((routeGold + eventGold) * (currentStageRoute.elite ? 1.75 : 1));
+  const artifactEventBonus = currentStageEvent ? getArtifactStageEventGoldMultiplier() : 1;
+  return Math.floor((routeGold + eventGold) * artifactEventBonus * (currentStageRoute.elite ? 1.75 : 1));
 }
 
 function getStageRewardXp() {
