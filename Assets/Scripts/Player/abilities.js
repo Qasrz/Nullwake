@@ -37,6 +37,7 @@ function markAbilityUsed(slot, timestamp = performance.now()) {
 }
 
 function beginAbilityCharge(slot, timestamp = performance.now()) {
+  if (isPlayerFrozen(timestamp)) return;
   const ability = getAbilityDef(slot);
   if (!ability || !ability.hold || !isAbilityReady(slot, timestamp) || player.charge) return;
   player.charge = { slot, startedAt: timestamp };
@@ -51,6 +52,7 @@ function releaseAbilityCharge(slot, timestamp = performance.now()) {
 
 function useAbility(slot, targetX = mouseX, targetY = mouseY, timestamp = performance.now(), heldMs = 0) {
   if (!player || gameState !== "playing") return;
+  if (isPlayerFrozen(timestamp)) return;
   const ability = getAbilityDef(slot);
   if (!ability || !isAbilityReady(slot, timestamp)) return;
 

@@ -49,7 +49,9 @@
       "files": {
         "prismWarden": "Assets/Sprites/Bosses/prism-warden.png",
         "ashenChoir": "Assets/Sprites/Bosses/ashen-choir.png",
-        "nullSeraph": "Assets/Sprites/Bosses/null-seraph.png"
+        "nullSeraph": "Assets/Sprites/Bosses/null-seraph.png",
+        "chronarch": "Assets/Sprites/Bosses/chronarch.png",
+        "eclipseMaw": "Assets/Sprites/Bosses/eclipse-maw.png"
       }
     },
     "effects": {

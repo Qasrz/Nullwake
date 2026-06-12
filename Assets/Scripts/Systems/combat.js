@@ -1,5 +1,6 @@
 function fireLaser(targetX, targetY, timestamp = performance.now()) {
   if (gameState !== "playing" && gameState !== "portalPhase") return;
+  if (isPlayerFrozen(timestamp)) return;
 
   const character = getSelectedCharacterDef();
   const primaryCooldown = character.primary ? character.primary.cooldown : LASER_FIRE_INTERVAL_MS;
@@ -351,6 +352,15 @@ function updateVisualEffects(timestamp) {
 
 function dealDamageToEnemy(enemy, amount, info = {}) {
   if (!enemy || enemy.dead) return;
+  if (enemy.type === "boss" && enemy.invulnerable && amount > 0) {
+    const now = performance.now();
+    if (now - (enemy.lastImmuneTextAt || -Infinity) > 420) {
+      enemy.lastImmuneTextAt = now;
+      addFloatingText("IMMUNE", enemy.x + enemy.size / 2, enemy.y - enemy.size * 0.25, enemy.accent || "#f8fafc", 15);
+    }
+    return;
+  }
+
   enemy.health -= amount;
   const ex = enemy.x + enemy.size / 2;
   const ey = enemy.y + enemy.size / 2;
@@ -368,6 +378,17 @@ function dealDamageToEnemy(enemy, amount, info = {}) {
 
 function killEnemy(enemy) {
   if (enemy.dead) return;
+  if (enemy.objective) {
+    enemy.dead = true;
+    enemy.health = 0;
+    const ox = enemy.x + enemy.size / 2;
+    const oy = enemy.y + enemy.size / 2;
+    burstParticles(ox, oy, enemy.color || "#f8fafc", 18, 3.6);
+    addScreenShake(4, 170);
+    addFloatingText("BROKEN", ox, oy - enemy.size * 0.7, enemy.color || "#f8fafc", 14);
+    return;
+  }
+
   noteEnemyKilled(enemy);
   enemy.dead = true;
   enemy.health = 0;
@@ -383,6 +404,7 @@ function killEnemy(enemy) {
   if (enemy.type === "boss") {
     showToast(`${enemy.bossName || "Boss"} defeated`, "The rift stabilizes. Claim your spoils.", 2800);
     activeArena = null;
+    clearBossObjectives(enemy);
   }
 }
 
@@ -665,6 +687,11 @@ function updateHazards(timestamp) {
       burstParticles(h.x, h.y, h.color || "#f97316", 18, 4);
       addScreenShake(5, 180);
     }
+    if (h.type === 'time_snare' && timestamp >= h.strikesAt && !h.hasStruck) {
+      h.hasStruck = true;
+      burstParticles(h.x, h.y, h.color || "#38bdf8", 16, 3.4);
+      addScreenShake(4, 150);
+    }
     if (h.type === 'lazer_beam' && (h.enemy.dead || h.enemy.health <= 0)) continue;
     if (h.type === 'boss_beam' && h.enemy && (h.enemy.dead || h.enemy.health <= 0)) continue;
     remaining.push(h);
@@ -764,6 +791,21 @@ function createGravityWell(x, y, radius, timestamp, damage, color = "#a78bfa") {
   });
 }
 
+function createTimeSnare(x, y, radius, timestamp, damage, color = "#38bdf8") {
+  hazards.push({
+    type: "time_snare",
+    x: clamp(x, 60, WIDTH - 60),
+    y: clamp(y, 60, HEIGHT - 60),
+    radius,
+    damage,
+    color,
+    strikesAt: timestamp + 900,
+    endsAt: timestamp + 1550,
+    hasStruck: false,
+    hasFrozen: false
+  });
+}
+
 function checkLaserHits() {
   const remainingLasers = [];
 
@@ -819,6 +861,7 @@ function checkPlayerHits(timestamp) {
   enemyProjectiles = remainingProjectiles;
 
   for (const enemy of enemies) {
+    if (enemy.objective) continue;
     if (rectsOverlap(player.x, player.y, player.size, enemy.x, enemy.y, enemy.size)) {
       damagePlayer(enemy.damage || 1);
       break;
@@ -830,6 +873,12 @@ function checkPlayerHits(timestamp) {
       if (circlesOverlap(center.x, center.y, playerRadius, h.x, h.y, h.radius)) damagePlayer(h.damage || 1);
     } else if (h.type === 'boss_impact') {
       if (h.hasStruck && circlesOverlap(center.x, center.y, playerRadius, h.x, h.y, h.radius)) damagePlayer(h.damage || 1);
+    } else if (h.type === 'time_snare') {
+      if (h.hasStruck && !h.hasFrozen && circlesOverlap(center.x, center.y, playerRadius, h.x, h.y, h.radius)) {
+        h.hasFrozen = true;
+        freezePlayer(1250, timestamp);
+        damagePlayer(h.damage || 1);
+      }
     } else if (h.type === 'gravity_well') {
       if (circlesOverlap(center.x, center.y, playerRadius, h.x, h.y, h.radius * 0.35) && timestamp >= h.nextTick) {
         damagePlayer(h.damage || 1);
@@ -866,6 +915,20 @@ function checkPlayerHits(timestamp) {
       center.y > activeArena.y + activeArena.h;
 
     if (outsideArena) damagePlayer(activeArena.damage || 1);
+
+    if (activeArena.sanctuary) {
+      const safe = activeArena.sanctuary;
+      const insideSanctuary = safe.shape === "rect"
+        ? center.x + playerRadius > safe.x - safe.width / 2 &&
+          center.x - playerRadius < safe.x + safe.width / 2 &&
+          center.y + playerRadius > safe.y - safe.height / 2 &&
+          center.y - playerRadius < safe.y + safe.height / 2
+        : circlesOverlap(center.x, center.y, playerRadius, safe.x, safe.y, safe.radius);
+
+      if (!insideSanctuary) {
+        damagePlayer((activeArena.damage || 1) * 0.82);
+      }
+    }
   }
 }
 
@@ -1017,6 +1080,24 @@ function drawHazards(timestamp) {
       } else {
         ctx.strokeStyle = h.color || "#f97316";
         ctx.lineWidth = 2 + warningPct * 5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, h.radius * warningPct, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (h.type === 'time_snare') {
+      const warningPct = h.hasStruck ? 1 : clamp((timestamp - (h.strikesAt - 900)) / 900, 0, 1);
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
+      if (h.hasStruck) {
+        ctx.fillStyle = "rgba(56, 189, 248, 0.34)";
+        ctx.fill();
+        ctx.strokeStyle = h.color || "#38bdf8";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = h.color || "#38bdf8";
+        ctx.lineWidth = 2 + warningPct * 4;
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(h.x, h.y, h.radius * warningPct, 0, Math.PI * 2);

@@ -25,10 +25,10 @@ function getPlayerDamageMultiplier() {
   if (!player) return 1;
   const character = getSelectedCharacterDef();
   const levelBonus = 1 + ((player.level || 1) - 1) * PLAYER_DAMAGE_PER_LEVEL;
-  const itemBonus = 1 + getItemStack("damage") * 0.15;
+  const itemBonus = 1 + getItemStack("damage") * 0.06;
   const goldStacks = getItemStack("goldEngine");
   const goldBonus = goldStacks > 0
-    ? 1 + Math.min(0.30 * goldStacks, Math.floor(playerGold / 10) * 0.01 * goldStacks)
+    ? 1 + Math.min(0.12 * goldStacks, Math.floor(playerGold / 10) * 0.003 * goldStacks)
     : 1;
 
   return levelBonus * itemBonus * goldBonus * (character.damageMultiplier || 1) * getArtifactDamageMultiplier();
@@ -40,11 +40,11 @@ function getXpGainMultiplier() {
 }
 
 function getCritChance() {
-  return Math.min(0.95, PLAYER_BASE_CRIT_CHANCE + getItemStack("critChance") * 0.08);
+  return Math.min(0.75, PLAYER_BASE_CRIT_CHANCE + getItemStack("critChance") * 0.04);
 }
 
 function getCritDamageMultiplier() {
-  return PLAYER_BASE_CRIT_DAMAGE + getItemStack("critDamage") * 0.40;
+  return PLAYER_BASE_CRIT_DAMAGE + getItemStack("critDamage") * 0.15;
 }
 
 function getAbilityCooldownMultiplier() {
@@ -52,13 +52,13 @@ function getAbilityCooldownMultiplier() {
 }
 
 function getAttackSpeedMultiplier() {
-  return 1 + getItemStack("trigger") * 0.12;
+  return 1 + getItemStack("trigger") * 0.06;
 }
 
 function getMoveSpeedMultiplier() {
   if (!player) return 1;
   const character = getSelectedCharacterDef();
-  const itemSpeed = 1 + getItemStack("hoof") * 0.12;
+  const itemSpeed = 1 + getItemStack("hoof") * 0.05;
   const buffSpeed = player.buffs && performance.now() < (player.buffs.speedUntil || 0)
     ? player.buffs.speedMultiplier || 1
     : 1;

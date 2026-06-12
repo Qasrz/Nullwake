@@ -492,10 +492,70 @@ function drawNullSeraph(api, frame, row) {
   }
 }
 
+function drawChronarch(api, frame, row) {
+  const tick = frame + row;
+  const phaseColor = row === 2 ? C.white : row === 1 ? C.cyan : C.sky;
+  api.ring(48, 48, 39, C.white);
+  api.ring(48, 48, 31, C.sky);
+  api.circle(48, 48, 25, C.ink);
+  api.circle(48, 48, 21, C.slate);
+  for (let i = 0; i < 12; i++) {
+    const a = -Math.PI / 2 + (Math.PI * 2 * i) / 12;
+    const x = Math.round(48 + Math.cos(a) * 31);
+    const y = Math.round(48 + Math.sin(a) * 31);
+    api.rect(x - 1, y - 1, 3, 3, i % 3 === 0 ? C.white : C.cyan);
+  }
+  const minute = -Math.PI / 2 + tick * Math.PI / 6;
+  const hour = -Math.PI / 2 + tick * Math.PI / 12;
+  api.line(48, 48, 48 + Math.cos(minute) * 25, 48 + Math.sin(minute) * 25, phaseColor, 2);
+  api.line(48, 48, 48 + Math.cos(hour) * 16, 48 + Math.sin(hour) * 16, C.gold, 3);
+  api.circle(48, 48, 5, C.ink);
+  api.circle(48, 48, 3, C.white);
+  if (row === 1) {
+    api.ring(48, 48, 43, C.cyan);
+    api.line(18, 18, 78, 78, C.sky, 1);
+    api.line(78, 18, 18, 78, C.sky, 1);
+  }
+  if (row === 2) {
+    api.line(8, 48, 88, 48, C.white, 3);
+    api.line(48, 8, 48, 88, C.cyan, 3);
+  }
+}
+
+function drawEclipseMaw(api, frame, row) {
+  const pulse = frame % 2;
+  api.ring(48, 48, 39 + pulse, C.gold);
+  api.ring(48, 48, 29, C.violet2);
+  api.circle(48, 48, 25, C.ink);
+  api.circle(42, 48, 18, C.gold);
+  api.circle(54, 48, 18, C.violet);
+  api.rect(35, 34, 8, 8, C.deep);
+  api.rect(53, 34, 8, 8, C.deep);
+  api.line(36, 62, 60, 62, C.ink, 4);
+  api.line(40, 64, 56, 64, C.red, 2);
+  for (let i = 0; i < 6 + row * 2; i++) {
+    const a = frame * 0.22 + (Math.PI * 2 * i) / (6 + row * 2);
+    const x = Math.round(48 + Math.cos(a) * (31 + row * 3));
+    const y = Math.round(48 + Math.sin(a) * (31 + row * 3));
+    api.diamond(x, y, 4, i % 2 ? C.gold : C.violet2);
+  }
+  if (row === 1) {
+    api.line(12, 48, 84, 48, C.violet2, 2);
+    api.line(48, 12, 48, 84, C.gold, 2);
+  }
+  if (row === 2) {
+    api.ring(48, 48, 44, C.white);
+    api.line(22, 22, 74, 74, C.gold, 3);
+    api.line(74, 22, 22, 74, C.violet2, 3);
+  }
+}
+
 const bossDrawers = {
   "prism-warden": drawPrismWarden,
   "ashen-choir": drawAshenChoir,
-  "null-seraph": drawNullSeraph
+  "null-seraph": drawNullSeraph,
+  "chronarch": drawChronarch,
+  "eclipse-maw": drawEclipseMaw
 };
 
 function drawProjectileCell(api, col, row) {
@@ -617,7 +677,9 @@ function generate() {
         files: {
           prismWarden: "Assets/Sprites/Bosses/prism-warden.png",
           ashenChoir: "Assets/Sprites/Bosses/ashen-choir.png",
-          nullSeraph: "Assets/Sprites/Bosses/null-seraph.png"
+          nullSeraph: "Assets/Sprites/Bosses/null-seraph.png",
+          chronarch: "Assets/Sprites/Bosses/chronarch.png",
+          eclipseMaw: "Assets/Sprites/Bosses/eclipse-maw.png"
         }
       },
       effects: {

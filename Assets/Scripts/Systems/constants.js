@@ -36,7 +36,7 @@ const uiShopTitle = document.getElementById("shop-title");
 const btnShopContinue = document.getElementById("btn-shop-continue");
 
 const PLAYER_SIZE = 24;
-const PLAYER_SPEED = 4;
+const PLAYER_SPEED = 3.25;
 const PLAYER_MAX_HEALTH = 100;
 const PLAYER_DAMAGE_COOLDOWN_MS = 600;
 const PLAYER_BASE_DAMAGE = 20;
@@ -110,7 +110,7 @@ const CHARACTER_DEFS = {
     desc: "Reliable shots, explosives, and charged precision.",
     speedMultiplier: 1,
     damageMultiplier: 1,
-    primary: { name: "Ballistic Rifle", cooldown: 280 },
+    primary: { name: "Ballistic Rifle", cooldown: 560 },
     abilities: {
       right: { label: "RMB", name: "Grenade", cooldown: 5200 },
       shift: { label: "Shift", name: "Combat Slide", cooldown: 4300 },
@@ -126,7 +126,7 @@ const CHARACTER_DEFS = {
     desc: "Chains lightning through packs and blinks through danger.",
     speedMultiplier: 1.03,
     damageMultiplier: 0.92,
-    primary: { name: "Static Bolt", cooldown: 360 },
+    primary: { name: "Static Bolt", cooldown: 720 },
     abilities: {
       right: { label: "RMB", name: "Arc Orb", cooldown: 4700 },
       shift: { label: "Shift", name: "Blink", cooldown: 5600 },
@@ -140,9 +140,9 @@ const CHARACTER_DEFS = {
     color: "#a78bfa",
     projectileColor: "#c4b5fd",
     desc: "Fast dashes, blade fans, and gravity cuts.",
-    speedMultiplier: 1.12,
+    speedMultiplier: 1.06,
     damageMultiplier: 0.86,
-    primary: { name: "Void Slash", cooldown: 330 },
+    primary: { name: "Void Slash", cooldown: 660 },
     abilities: {
       right: { label: "RMB", name: "Rift Hook", cooldown: 4200 },
       shift: { label: "Shift", name: "Phase Step", cooldown: 5200 },
@@ -158,7 +158,7 @@ const CHARACTER_DEFS = {
     desc: "Area denial, healing tonics, and volatile flasks.",
     speedMultiplier: 0.96,
     damageMultiplier: 1.02,
-    primary: { name: "Volatile Flask", cooldown: 520 },
+    primary: { name: "Volatile Flask", cooldown: 1040 },
     abilities: {
       right: { label: "RMB", name: "Transmute Pool", cooldown: 5000 },
       shift: { label: "Shift", name: "Tonic Rush", cooldown: 7800 },
@@ -174,7 +174,7 @@ const CHARACTER_DEFS = {
     desc: "Builds turrets, paints targets, and launches smart ordnance.",
     speedMultiplier: 0.94,
     damageMultiplier: 1.04,
-    primary: { name: "Rivet Driver", cooldown: 320 },
+    primary: { name: "Rivet Driver", cooldown: 640 },
     abilities: {
       right: { label: "RMB", name: "Deploy Turret", cooldown: 9000 },
       shift: { label: "Shift", name: "Missile Lock", cooldown: 6800, hold: true },
@@ -225,19 +225,19 @@ const ARTIFACT_DEFS = [
 // Risk-of-Rain-style stackable items plus a few build-around synergies.
 const SHOP_ITEMS = [
   { id: "vitality", name: "Heart Injector", desc: "+25 max health and heal 25.", baseCost: 18, color: "#ef4444" },
-  { id: "damage", name: "Caliber Core", desc: "+15% damage.", baseCost: 22, color: "#fb923c" },
-  { id: "critChance", name: "Glass Prism", desc: "+8% critical chance.", baseCost: 20, color: "#f43f5e" },
-  { id: "critDamage", name: "Redline Scope", desc: "+40% critical damage.", baseCost: 24, color: "#f97316", requires: ["critChance"] },
+  { id: "damage", name: "Caliber Core", desc: "+6% damage.", baseCost: 22, color: "#fb923c" },
+  { id: "critChance", name: "Glass Prism", desc: "+4% critical chance.", baseCost: 20, color: "#f43f5e" },
+  { id: "critDamage", name: "Redline Scope", desc: "+15% critical damage.", baseCost: 24, color: "#f97316", requires: ["critChance"] },
   { id: "bounce", name: "Ricochet Plate", desc: "Shots bounce off +1 wall.", baseCost: 25, color: "#60a5fa" },
   { id: "pierce", name: "Needle Rail", desc: "Shots pierce +1 enemy.", baseCost: 25, color: "#22c55e" },
   { id: "explosive", name: "Blast Seed", desc: "Shots explode for half damage. Stacks add radius and blast damage.", baseCost: 32, color: "#facc15" },
   { id: "cooldown", name: "Chrono Spool", desc: "Ability cooldowns are 10% shorter, multiplicative.", baseCost: 28, color: "#14b8a6" },
-  { id: "trigger", name: "Reflex Trigger", desc: "+12% primary fire rate.", baseCost: 18, color: "#eab308" },
-  { id: "hoof", name: "Phase Hoof", desc: "+12% move speed.", baseCost: 18, color: "#a3e635" },
+  { id: "trigger", name: "Reflex Trigger", desc: "+6% primary fire rate.", baseCost: 18, color: "#eab308" },
+  { id: "hoof", name: "Phase Hoof", desc: "+5% move speed.", baseCost: 18, color: "#a3e635" },
   { id: "kineticLoop", name: "Kinetic Loop", desc: "Bounced shots gain +25% damage per stack.", baseCost: 30, color: "#38bdf8", requires: ["bounce"] },
   { id: "stormNeedle", name: "Storm Needle", desc: "Piercing hits arc lightning to a nearby enemy.", baseCost: 34, color: "#67e8f9", requires: ["pierce"] },
   { id: "fuseOil", name: "Fuse Oil", desc: "Explosions leave burning pools that scale with blast damage.", baseCost: 34, color: "#fb7185", requires: ["explosive"] },
-  { id: "goldEngine", name: "Interest Engine", desc: "+1% damage per 10 gold held, capped per stack.", baseCost: 26, color: "#fde047" },
+  { id: "goldEngine", name: "Interest Engine", desc: "+0.3% damage per 10 gold held, capped per stack.", baseCost: 26, color: "#fde047" },
   { id: "gunnerCluster", name: "Cluster Grenade", desc: "Gunner grenades burst into smaller grenades.", baseCost: 42, color: "#fb923c", character: "gunner" },
   { id: "gunnerFractal", name: "Fractal Scatter", desc: "Gunner Scatter Shot splits again on hit for half damage.", baseCost: 42, color: "#38bdf8", character: "gunner" },
   { id: "gunnerChargedBounce", name: "Mag-Rail Fletching", desc: "Gunner Charged Shot gains +3 wall bounces.", baseCost: 42, color: "#facc15", character: "gunner" }
@@ -294,7 +294,7 @@ const BOSS_ARENA_MARGIN = 70;
 const LASER_SPEED = 9;
 const LASER_DAMAGE = PLAYER_BASE_DAMAGE;
 const LASER_RADIUS = 4;
-const LASER_FIRE_INTERVAL_MS = 280;
+const LASER_FIRE_INTERVAL_MS = 560;
 
 const GOLD_RADIUS = 5; 
 const GOLD_PICKUP_RADIUS = 25; 

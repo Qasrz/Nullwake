@@ -310,7 +310,9 @@ function updateEnemies(timestamp, delta) {
   const center = getPlayerCenter();
 
   for (const enemy of enemies) {
-    if (enemy.type === "boss") {
+    if (enemy.objective) {
+      clampEnemyToCanvas(enemy);
+    } else if (enemy.type === "boss") {
       updateBossEnemy(enemy, center, timestamp, delta);
     } else {
       handleEnemyMovement(enemy, center, timestamp, delta);
@@ -332,6 +334,11 @@ function drawEnemies() {
 }
 
 function drawStandardEnemy(enemy) {
+  if (enemy.objective) {
+    drawBossObjective(enemy);
+    return;
+  }
+
   const cx = enemy.x + enemy.size / 2;
   const cy = enemy.y + enemy.size / 2;
   const now = performance.now();
@@ -395,6 +402,62 @@ function drawStandardEnemy(enemy) {
   ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
 }
 
+function drawBossObjective(enemy) {
+  const cx = enemy.x + enemy.size / 2;
+  const cy = enemy.y + enemy.size / 2;
+  const t = performance.now() * 0.004 + enemy.id;
+  const pulse = 0.8 + Math.sin(t * 2) * 0.12;
+  const color = enemy.color || "#f8fafc";
+  const accent = enemy.accent || "#0f172a";
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(t * 0.45);
+  ctx.globalAlpha = 0.34;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, enemy.size * 0.72 * pulse, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "#020617";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (enemy.objectiveType === "prismFocus") {
+    ctx.moveTo(0, -enemy.size * 0.55);
+    ctx.lineTo(enemy.size * 0.55, 0);
+    ctx.lineTo(0, enemy.size * 0.55);
+    ctx.lineTo(-enemy.size * 0.55, 0);
+  } else if (enemy.objectiveType === "voidAnchor") {
+    for (let i = 0; i < 6; i++) {
+      const angle = Math.PI * 2 * i / 6;
+      const r = i % 2 ? enemy.size * 0.42 : enemy.size * 0.62;
+      const x = Math.cos(angle) * r;
+      const y = Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+  } else {
+    ctx.rect(-enemy.size * 0.42, -enemy.size * 0.42, enemy.size * 0.84, enemy.size * 0.84);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.arc(0, 0, enemy.size * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  const healthRatio = enemy.health / enemy.maxHealth;
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(enemy.x, enemy.y - 9, enemy.size, 4);
+  ctx.fillStyle = color;
+  ctx.fillRect(enemy.x, enemy.y - 9, enemy.size * healthRatio, 4);
+}
+
 function drawBossEnemy(enemy) {
   const cx = enemy.x + enemy.size / 2;
   const cy = enemy.y + enemy.size / 2;
@@ -418,6 +481,17 @@ function drawBossEnemy(enemy) {
   ctx.closePath();
   ctx.stroke();
   ctx.restore();
+
+  if (enemy.invulnerable) {
+    const shieldPulse = 0.62 + Math.sin(now * 0.008) * 0.18;
+    ctx.strokeStyle = enemy.accent || "#f8fafc";
+    ctx.globalAlpha = shieldPulse;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, enemy.size * 1.08, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 
   const spriteRow = now - (enemy.lastPatternAt || -Infinity) < 620
     ? "attack"

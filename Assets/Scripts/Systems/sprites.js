@@ -16,7 +16,9 @@ const SPRITE_SHEETS = {
   bosses: {
     prismWarden: { src: "Assets/Sprites/Bosses/prism-warden.png", frameWidth: 96, frameHeight: 96, columns: 4, rows: { idle: 0, phase: 1, attack: 2 } },
     ashenChoir: { src: "Assets/Sprites/Bosses/ashen-choir.png", frameWidth: 96, frameHeight: 96, columns: 4, rows: { idle: 0, phase: 1, attack: 2 } },
-    nullSeraph: { src: "Assets/Sprites/Bosses/null-seraph.png", frameWidth: 96, frameHeight: 96, columns: 4, rows: { idle: 0, phase: 1, attack: 2 } }
+    nullSeraph: { src: "Assets/Sprites/Bosses/null-seraph.png", frameWidth: 96, frameHeight: 96, columns: 4, rows: { idle: 0, phase: 1, attack: 2 } },
+    chronarch: { src: "Assets/Sprites/Bosses/chronarch.png", frameWidth: 96, frameHeight: 96, columns: 4, rows: { idle: 0, phase: 1, attack: 2 } },
+    eclipseMaw: { src: "Assets/Sprites/Bosses/eclipse-maw.png", frameWidth: 96, frameHeight: 96, columns: 4, rows: { idle: 0, phase: 1, attack: 2 } }
   },
   effects: {
     projectiles: { src: "Assets/Sprites/Effects/projectiles.png", frameWidth: 16, frameHeight: 16, columns: 4, rows: 4 },

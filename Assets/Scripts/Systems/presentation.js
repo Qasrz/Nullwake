@@ -179,6 +179,80 @@ function drawArenaBounds(timestamp) {
   ctx.fillRect(0, activeArena.y + activeArena.h, WIDTH, HEIGHT - activeArena.y - activeArena.h);
   ctx.fillRect(0, activeArena.y, activeArena.x, activeArena.h);
   ctx.fillRect(activeArena.x + activeArena.w, activeArena.y, WIDTH - activeArena.x - activeArena.w, activeArena.h);
+
+  if (activeArena.sanctuary) {
+    const safe = activeArena.sanctuary;
+    if (safe.shape === "rect") {
+      const left = safe.x - safe.width / 2;
+      const top = safe.y - safe.height / 2;
+      const right = safe.x + safe.width / 2;
+      const bottom = safe.y + safe.height / 2;
+
+      ctx.fillStyle = safe.wallColor || "rgba(127, 29, 29, 0.58)";
+      ctx.fillRect(activeArena.x, activeArena.y, activeArena.w, Math.max(0, top - activeArena.y));
+      ctx.fillRect(activeArena.x, bottom, activeArena.w, Math.max(0, activeArena.y + activeArena.h - bottom));
+      ctx.fillRect(activeArena.x, top, Math.max(0, left - activeArena.x), safe.height);
+      ctx.fillRect(right, top, Math.max(0, activeArena.x + activeArena.w - right), safe.height);
+
+      ctx.fillStyle = safe.color || "rgba(250, 204, 21, 0.26)";
+      ctx.fillRect(left, top, safe.width, safe.height);
+      ctx.strokeStyle = "#facc15";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(left, top, safe.width, safe.height);
+      ctx.strokeStyle = "rgba(248, 250, 252, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(left + 8, top + 8, safe.width - 16, safe.height - 16);
+    } else {
+      ctx.fillStyle = safe.storm || "rgba(127, 29, 29, 0.24)";
+      ctx.fillRect(activeArena.x, activeArena.y, activeArena.w, activeArena.h);
+      ctx.fillStyle = safe.color || "rgba(250, 204, 21, 0.32)";
+      ctx.strokeStyle = "#facc15";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(safe.x, safe.y, safe.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  if (activeArena.clockRite) {
+    const rite = activeArena.clockRite;
+    const targetAngle = rite.angle + Math.sin(timestamp * 0.0013) * 0.08;
+    ctx.strokeStyle = "rgba(248, 250, 252, 0.36)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(rite.x, rite.y, rite.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(rite.x, rite.y, rite.innerRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = rite.color || "rgba(56, 189, 248, 0.36)";
+    ctx.beginPath();
+    ctx.moveTo(rite.x, rite.y);
+    ctx.arc(rite.x, rite.y, rite.radius, targetAngle - rite.width, targetAngle + rite.width);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#67e8f9";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(rite.x, rite.y, rite.radius + 3, targetAngle - rite.width, targetAngle + rite.width);
+    ctx.stroke();
+  }
+
+  if (activeArena.eclipseRite) {
+    const rite = activeArena.eclipseRite;
+    ["solar", "lunar"].forEach(key => {
+      const zone = rite[key];
+      const required = rite.required === key;
+      ctx.fillStyle = zone.color;
+      ctx.strokeStyle = required ? "#f8fafc" : key === "solar" ? "#facc15" : "#a78bfa";
+      ctx.lineWidth = required ? 5 : 3;
+      ctx.beginPath();
+      ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
 }
 
 function updateBossHud(timestamp) {
@@ -190,12 +264,16 @@ function updateBossHud(timestamp) {
 
   if (uiBossFrame) uiBossFrame.classList.remove("hidden");
   if (uiBossName) uiBossName.innerText = boss.bossName || "Boss";
-  if (uiBossSubtitle) uiBossSubtitle.innerText = boss.bossSubtitle || "";
+  if (uiBossSubtitle) uiBossSubtitle.innerText = boss.mechanicText || boss.bossSubtitle || "";
   if (uiBossHealthFill) uiBossHealthFill.style.width = `${clamp((boss.health / boss.maxHealth) * 100, 0, 100)}%`;
-  if (uiBossPhaseText) uiBossPhaseText.innerText = `Phase ${boss.phase || 1}`;
+  if (uiBossPhaseText) uiBossPhaseText.innerText = boss.invulnerable
+    ? `IMMUNE ${Math.floor((boss.mechanicProgress || 0) * 100)}%`
+    : `Phase ${boss.phase || 1}`;
 
   if (uiObjectiveText) {
-    uiObjectiveText.innerText = `Defeat ${boss.bossName || "the boss"}`;
+    uiObjectiveText.innerText = boss.invulnerable
+      ? boss.mechanicText || "Resolve the boss mechanic"
+      : `Defeat ${boss.bossName || "the boss"}`;
   }
 }
 
