@@ -65,45 +65,45 @@ function runAshenChoirPattern(enemy, center, timestamp) {
   const pattern = enemy.patternIndex % 4;
 
   if (pattern === 0) {
-    for (let i = 0; i < 5 + enemy.phase * 3; i++) {
-      const pos = getPointOnArenaPerimeter(timestamp * 0.00008 + i / (5 + enemy.phase * 3));
+    const impactCount = 3 + enemy.phase * 2;
+    for (let i = 0; i < impactCount; i++) {
+      const pos = getPointOnArenaPerimeter(timestamp * 0.00008 + i / impactCount);
       createBossImpactHazard(
         lerp(pos.x, center.x, 0.55),
         lerp(pos.y, center.y, 0.55),
-        44 + enemy.phase * 8,
+        38 + enemy.phase * 6,
         timestamp,
-        enemy.damage * 0.95,
+        enemy.damage * 0.82,
         enemy.accent
       );
     }
   } else if (pattern === 1) {
-    fireRotatingEdgeCurtain(enemy, timestamp, 11 + enemy.phase * 4, {
-      speed: 2.00 + enemy.phase * 0.26,
+    fireRotatingEdgeCurtain(enemy, timestamp, 7 + enemy.phase * 2, {
+      speed: 1.76 + enemy.phase * 0.16,
       radius: 5,
-      damage: enemy.damage * 0.78,
+      damage: enemy.damage * 0.64,
       color: enemy.color,
       tangent: 0.32
     });
   } else if (pattern === 2) {
-    fireEnemyArc(boss.x, boss.y, playerAngle, Math.PI * 0.95, 8 + enemy.phase * 4, {
-      speed: 3 + enemy.phase * 0.28,
+    fireEnemyArc(boss.x, boss.y, playerAngle, Math.PI * 0.72, 5 + enemy.phase * 2, {
+      speed: 2.55 + enemy.phase * 0.18,
       radius: 5,
-      damage: enemy.damage,
+      damage: enemy.damage * 0.78,
       color: enemy.accent
     });
   } else {
-    const summons = enemy.phase >= 2 ? 2 : 1;
+    const summons = enemy.phase >= 3 ? 2 : 1;
     for (let i = 0; i < summons; i++) {
       const pos = getPointOnArenaPerimeter(timestamp * 0.00012 + i / summons);
-      spawnBossMinion(i % 2 === 0 ? "melee" : "shooter", pos.x, pos.y, enemy.level);
+      spawnBossMinion("melee", pos.x, pos.y, enemy.level);
     }
-    fireRotatingEdgeCurtain(enemy, timestamp + 700, 4 + enemy.phase * 3, {
-      speed: 2.45,
+    fireRotatingEdgeCurtain(enemy, timestamp + 700, 3 + enemy.phase * 2, {
+      speed: 2.05,
       radius: 5,
-      damage: enemy.damage * 0.72,
+      damage: enemy.damage * 0.58,
       color: enemy.accent,
       tangent: -0.22
     });
   }
 }
-
